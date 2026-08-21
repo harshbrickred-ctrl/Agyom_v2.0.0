@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Agyom">
+  <!-- Agyom mark: red ring with macron bar -->
+  <rect x="16" y="8" width="32" height="8" rx="2" fill="#E10600"/>
+  <circle cx="32" cy="40" r="18" fill="none" stroke="#E10600" stroke-width="8"/>
+</svg>

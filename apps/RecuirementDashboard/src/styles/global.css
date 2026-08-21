@@ -1,0 +1,23 @@
+/* =============================================================
+   SST Design System entry — imports tokens + components
+   ============================================================= */
+
+@import './tokens.css';
+@import './base.css';
+@import './layouts.css';
+@import './components/button.css';
+@import './components/form.css';
+@import './components/card.css';
+@import './components/table.css';
+@import './components/modal.css';
+@import './components/badge.css';
+@import './components/pipeline.css';
+
+/* Dashboard UI/UX levels L1?L4 ? remove this import (or a LEVEL block inside) to revert */
+@import './dashboard-ui-levels.css';
+
+/* Role-screen UI/UX phases — remove this import (or a PHASE block inside) to revert */
+@import './role-ui-levels.css';
+
+/* Login visual redesign — remove this import to revert */
+@import './login-ui.css';

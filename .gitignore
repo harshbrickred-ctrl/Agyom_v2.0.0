@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+docker/.env.prod
+*.pem
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Test & coverage
+coverage/
+test-results/
+playwright-report/
+blob-report/
+apps/RecuirementDashboard/test-results/
+apps/RecuirementDashboard/playwright-report/
+
+# Prisma generated client (apps/api)
+apps/api/generated/
+
+# Vite
+apps/web/dist/
+
+# Large Docker image archives (exceed GitHub 100MB file limit)
+*.tar
+sst-v1-images.tar
+sst-v1-handoff/sst-v1-images.tar

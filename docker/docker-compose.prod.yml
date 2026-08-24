@@ -7,10 +7,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: sst
-      POSTGRES_PASSWORD: sst
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: sst
-    ports:
-      - "5433:5432"
     volumes:
       - sst_v1_pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -31,7 +29,7 @@ services:
     env_file:
       - .env.prod
     environment:
-      DATABASE_URL: postgresql://sst:sst@postgres:5432/sst?schema=public
+      DATABASE_URL: postgresql://sst:${POSTGRES_PASSWORD}@postgres:5432/sst?schema=public
       PORT: "3000"
     ports:
       - "${API_HOST_PORT:-3000}:3000"
@@ -49,7 +47,7 @@ services:
     container_name: sst-v1-web
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${WEB_HOST_PORT:-8080}:80"
     depends_on:
       - api
     networks:

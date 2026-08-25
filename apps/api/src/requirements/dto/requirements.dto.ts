@@ -1,4 +1,5 @@
 import {
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsDateString,
@@ -264,4 +265,18 @@ export class CreateRequirementNoteDto {
   @IsString()
   @MinLength(1)
   body!: string;
+}
+
+export class BulkDeleteRequirementsDto {
+  @ApiProperty({
+    type: [String],
+    description: 'Requirement UUIDs or publicIds (REQ-00001)',
+    example: ['REQ-00001', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'],
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  ids!: string[];
 }

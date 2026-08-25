@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { get, put, post } from '../../services/apiClient';
+import { get, put, post, del } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -62,6 +62,9 @@ export default function YourRequirementsScreen() {
   const [statusBusyId, setStatusBusyId] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
   const [statusError, setStatusError] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [deletingId, setDeletingId] = useState(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const normalizeId = (value) => (value == null ? null : String(value).trim());
   const normalizeEmail = (value) => (value == null ? null : String(value).trim().toLowerCase());
@@ -188,6 +191,7 @@ export default function YourRequirementsScreen() {
     user?.userType === 'admin' ||
     user?.userType === 'sales' ||
     user?.userType === 'sales_lead';
+  const canDelete = user?.userType === 'admin';
 
   const visible = useMemo(() => {
     return items
@@ -207,6 +211,17 @@ export default function YourRequirementsScreen() {
       })
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }, [items, filters, listSearchQ]);
+
+  const visibleIds = useMemo(
+    () => visible.map((r) => r.id).filter(Boolean),
+    [visible],
+  );
+  const allVisibleSelected =
+    canDelete &&
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected =
+    canDelete && visibleIds.some((id) => selectedIds.has(id));
 
   const myRequirements = useMemo(() => items.filter(isOwnedByCurrentSalesUser), [items, user]);
 
@@ -257,6 +272,93 @@ export default function YourRequirementsScreen() {
       setStatusError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setStatusBusyId(null);
+    }
+  };
+
+  const toggleSelect = (id, checked) => {
+    if (!id || !canDelete) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllVisible = (checked) => {
+    if (!canDelete) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        visibleIds.forEach((id) => next.add(id));
+      } else {
+        visibleIds.forEach((id) => next.delete(id));
+      }
+      return next;
+    });
+  };
+
+  const deleteRequirement = async (requirement) => {
+    if (!canDelete || !requirement?.id) return;
+    const label = requirement.publicId || requirement.roleSkill || 'this requirement';
+    const ok = window.confirm(
+      `Delete ${label}?\n\nIt will be removed from the requirements list. This cannot be undone from the UI.`,
+    );
+    if (!ok) return;
+
+    setDeletingId(requirement.id);
+    setStatusMessage(null);
+    setStatusError(null);
+    try {
+      await del(`${ENDPOINTS.REQUIREMENTS}/${requirement.id}`);
+      setItems((prev) => prev.filter((r) => r.id !== requirement.id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(requirement.id);
+        return next;
+      });
+      if (viewingRequirement?.id === requirement.id) setViewingRequirement(null);
+      if (editing?.id === requirement.id) setEditing(null);
+      const msg = `Requirement ${label} deleted`;
+      setStatusMessage(msg);
+      toast(msg);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete requirement';
+      setStatusError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const deleteSelectedRequirements = async () => {
+    if (!canDelete || selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    const ok = window.confirm(
+      `Delete ${ids.length} selected requirement${ids.length === 1 ? '' : 's'}?\n\nThey will be removed from the requirements list. This cannot be undone from the UI.`,
+    );
+    if (!ok) return;
+
+    setBulkDeleting(true);
+    setStatusMessage(null);
+    setStatusError(null);
+    try {
+      const res = await post(`${ENDPOINTS.REQUIREMENTS}/bulk-delete`, { ids });
+      const deletedIds = new Set(res?.ids || ids);
+      setItems((prev) => prev.filter((r) => !deletedIds.has(r.id)));
+      setSelectedIds(new Set());
+      if (viewingRequirement?.id && deletedIds.has(viewingRequirement.id)) {
+        setViewingRequirement(null);
+      }
+      if (editing?.id && deletedIds.has(editing.id)) setEditing(null);
+      const count = res?.deleted ?? deletedIds.size;
+      const msg = `${count} requirement${count === 1 ? '' : 's'} deleted`;
+      setStatusMessage(msg);
+      toast(msg);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete requirements';
+      setStatusError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -476,6 +578,28 @@ export default function YourRequirementsScreen() {
       {statusMessage && <div className="add-success">{statusMessage}</div>}
       {statusError && <div className="add-error">{statusError}</div>}
 
+      {canDelete && selectedIds.size > 0 && (
+        <div className="yr-bulk-bar">
+          <span>{selectedIds.size} selected</span>
+          <button
+            type="button"
+            className="cand-edit yr-status-btn yr-status-btn--danger"
+            disabled={bulkDeleting || Boolean(deletingId)}
+            onClick={deleteSelectedRequirements}
+          >
+            {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size} selected`}
+          </button>
+          <button
+            type="button"
+            className="filter-clear"
+            disabled={bulkDeleting}
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <ScreenSkeleton rows={8} />
       ) : error ? (
@@ -497,6 +621,19 @@ export default function YourRequirementsScreen() {
           <table className="data-table yr-table">
             <thead>
               <tr>
+                {canDelete && (
+                  <th className="yr-select-col" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected;
+                      }}
+                      onChange={(e) => toggleSelectAllVisible(e.target.checked)}
+                      aria-label="Select all visible requirements"
+                    />
+                  </th>
+                )}
                 <th>Req ID</th>
                 <th>Client</th>
                 <th>Role / Skill</th>
@@ -518,6 +655,16 @@ export default function YourRequirementsScreen() {
             <tbody>
               {visible.map((r) => (
                 <tr key={r.id || r.publicId} onClick={() => openRequirementDetails(r)}>
+                  {canDelete && (
+                    <td className="yr-select-col" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(r.id)}
+                        onChange={(e) => toggleSelect(r.id, e.target.checked)}
+                        aria-label={`Select ${r.publicId || r.id}`}
+                      />
+                    </td>
+                  )}
                   <td>{r.publicId || '—'}</td>
                   <td>{r.client?.name || '—'}</td>
                   <td>{r.roleSkill || '—'}</td>
@@ -591,6 +738,16 @@ export default function YourRequirementsScreen() {
                           title="Cancel requirement"
                         >
                           Cancel
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          className="cand-edit yr-status-btn yr-status-btn--danger"
+                          disabled={deletingId === r.id || bulkDeleting || statusBusyId === r.id}
+                          onClick={() => deleteRequirement(r)}
+                          title="Delete requirement"
+                        >
+                          {deletingId === r.id ? 'Deleting…' : 'Delete'}
                         </button>
                       )}
                     </div>

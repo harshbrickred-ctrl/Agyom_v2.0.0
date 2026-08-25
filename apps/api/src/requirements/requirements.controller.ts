@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -20,6 +21,7 @@ import {
 import { Role } from '../prisma/client';
 import { RequirementsService } from './requirements.service';
 import {
+  BulkDeleteRequirementsDto,
   CreateRequirementDto,
   CreateRequirementNoteDto,
   RequirementStatusDto,
@@ -139,6 +141,37 @@ export class RequirementsController {
     @CurrentUser() user: AuthUser,
   ): Promise<any> {
     return this.requirements.create(dto, user);
+  }
+
+  @Roles(Role.ADMIN)
+  @Post('bulk-delete')
+  @ApiOperation({
+    operationId: 'bulkDeleteRequirements',
+    summary: 'Soft-delete multiple requirements (Admin only)',
+  })
+  @ApiOkResponse({ description: 'Deleted count and ids' })
+  @ApiMutateErrors()
+  bulkDelete(
+    @Body() dto: BulkDeleteRequirementsDto,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ deleted: number; ids: string[] }> {
+    return this.requirements.removeMany(dto.ids, user);
+  }
+
+  @Roles(Role.ADMIN)
+  @Delete(':id')
+  @ApiOperation({
+    operationId: 'deleteRequirement',
+    summary: 'Soft-delete a requirement (Admin only)',
+  })
+  @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
+  @ApiOkResponse({ description: 'Deleted requirement id' })
+  @ApiMutateErrors()
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ ok: true; id: string }> {
+    return this.requirements.remove(id, user);
   }
 
   @Roles(Role.ADMIN, Role.SALES, Role.SALES_LEAD)

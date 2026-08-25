@@ -766,6 +766,29 @@
   height: 12px;
 }
 
+.yr-requirements .yr-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--surface-2, #f8fafc);
+  font-size: 0.875rem;
+}
+
+.yr-requirements .yr-select-col {
+  width: 36px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.yr-requirements .yr-select-col input[type='checkbox'] {
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .yr-requirements .filter-fields {
     grid-template-columns: 1fr;

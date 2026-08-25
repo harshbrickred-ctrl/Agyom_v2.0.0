@@ -1484,4 +1484,82 @@ export class RequirementsService {
     );
     return note;
   }
+
+  async remove(id: string, actor: AuthUser): Promise<{ ok: true; id: string }> {
+    const before = await this.findRequirementOrThrow(id);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.requirement.update({
+        where: { id: before.id },
+        data: { deletedAt: new Date() },
+      });
+      await this.audit.log(
+        {
+          entityType: 'Requirement',
+          entityId: before.id,
+          action: 'DELETE',
+          actorUserId: actor.id,
+          before: {
+            publicId: before.publicId,
+            status: before.status,
+            roleSkill: before.roleSkill,
+            clientId: before.clientId,
+          },
+          after: { deletedAt: true },
+        },
+        tx,
+      );
+    });
+    return { ok: true, id: before.id };
+  }
+
+  async removeMany(
+    ids: string[],
+    actor: AuthUser,
+  ): Promise<{ deleted: number; ids: string[] }> {
+    const unique = [...new Set(ids.map((id) => String(id).trim()).filter(Boolean))];
+    if (!unique.length) {
+      throw new BadRequestException('At least one requirement id is required');
+    }
+
+    const found: { id: string; publicId: string; status: RequirementStatus }[] =
+      [];
+    for (const id of unique) {
+      const row = await this.prisma.requirement.findFirst({
+        where: this.whereById(id),
+        select: { id: true, publicId: true, status: true },
+      });
+      if (row) found.push(row);
+    }
+
+    if (!found.length) {
+      throw new NotFoundException('No matching requirements found');
+    }
+
+    const resolvedIds = [...new Set(found.map((r) => r.id))];
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.requirement.updateMany({
+        where: { id: { in: resolvedIds }, deletedAt: null },
+        data: { deletedAt: now },
+      });
+      for (const row of found.filter(
+        (r, i, arr) => arr.findIndex((x) => x.id === r.id) === i,
+      )) {
+        await this.audit.log(
+          {
+            entityType: 'Requirement',
+            entityId: row.id,
+            action: 'DELETE',
+            actorUserId: actor.id,
+            before: { publicId: row.publicId, status: row.status },
+            after: { deletedAt: true },
+          },
+          tx,
+        );
+      }
+    });
+
+    return { deleted: resolvedIds.length, ids: resolvedIds };
+  }
 }

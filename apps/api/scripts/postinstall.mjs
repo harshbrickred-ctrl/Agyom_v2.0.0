@@ -18,8 +18,11 @@ if (process.env.VERCEL) {
     stdio: 'inherit',
     cwd: repoRoot,
   });
-  execSync('pnpm exec prisma migrate deploy', {
-    stdio: 'inherit',
-    cwd: apiRoot,
-  });
+  // The dashboard project also installs this workspace, and it has no database URL.
+  if (process.env.DATABASE_URL) {
+    execSync('pnpm exec prisma migrate deploy', {
+      stdio: 'inherit',
+      cwd: apiRoot,
+    });
+  }
 }

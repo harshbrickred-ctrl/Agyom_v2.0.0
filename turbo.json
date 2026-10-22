@@ -15,7 +15,8 @@
     "APP_LOGIN_URL",
     "OPENAI_API_KEY",
     "OPENAI_BASE_URL",
-    "OPENAI_RESUME_MODEL"
+    "OPENAI_RESUME_MODEL",
+    "VITE_API_URL"
   ],
   "tasks": {
     "build": {

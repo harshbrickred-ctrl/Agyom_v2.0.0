@@ -4,7 +4,7 @@ import {
   computeTaHandoffSlaRag,
   daysBetween,
 } from '@sst/shared-utils';
-import { Prisma } from '../prisma/client';
+import { Prisma, Role } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DashboardQueryDto } from '../common/swagger/query.dto';
 
@@ -16,13 +16,14 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboard(query: DashboardQueryDto): Promise<Record<string, unknown>> {
-    const [summary, breakdowns, escalations, positionsByClient, lists] =
+    const [summary, breakdowns, escalations, positionsByClient, lists, ownerPerformance] =
       await Promise.all([
         this.summary(query),
         this.breakdowns(query),
         this.escalations(query),
         this.positionsByClient(query),
         this.lists(query),
+        this.ownerPerformance(query),
       ]);
 
     return {
@@ -34,6 +35,7 @@ export class DashboardService {
       openPositionsOnClient: positionsByClient.openPositionsOnClient,
       closedPositionsOnClient: positionsByClient.closedPositionsOnClient,
       lists,
+      ownerPerformance,
     };
   }
 
@@ -84,6 +86,8 @@ export class DashboardService {
     if (!reqIds.length) {
       return {
         totalRequirements: 0,
+        activeRequirements: 0,
+        onHoldRequirements: 0,
         totalPositions: 0,
         openPositions: 0,
         closedPositions: 0,
@@ -188,7 +192,6 @@ export class DashboardService {
 
     const candidatesJoined = joinedOnboardings.length;
     const closedPositions = candidatesJoined;
-    const openPositions = Math.max(0, totalPositions - closedPositions);
     const fillRate =
       totalPositions > 0 ? closedPositions / totalPositions : 0;
     const requirementById = new Map(requirements.map((r) => [r.id, r]));
@@ -217,6 +220,15 @@ export class DashboardService {
         (joinedByRequirement.get(onboarding.requirementId) ?? 0) + 1,
       );
     }
+    const openPositions = requirements
+      .filter((requirement) => requirement.status !== 'CANCELLED')
+      .reduce((sum, requirement) => {
+        const joined = Math.min(
+          joinedByRequirement.get(requirement.id) ?? 0,
+          requirement.numberOfPositions,
+        );
+        return sum + Math.max(0, requirement.numberOfPositions - joined);
+      }, 0);
 
     let requirementsAtRisk = 0;
     let overdueRequirements = 0;
@@ -243,9 +255,17 @@ export class DashboardService {
     const cancelled = requirements.filter(
       (requirement) => requirement.status === 'CANCELLED',
     );
+    const activeRequirements = requirements.filter(
+      (requirement) => requirement.status === 'ACTIVE',
+    ).length;
+    const onHoldRequirements = requirements.filter(
+      (requirement) => requirement.status === 'ON_HOLD',
+    ).length;
 
     return {
-      totalRequirements: requirements.length,
+      totalRequirements: activeRequirements + onHoldRequirements + cancelled.length,
+      activeRequirements,
+      onHoldRequirements,
       totalPositions,
       openPositions,
       closedPositions,
@@ -980,5 +1000,210 @@ export class DashboardService {
       cancelled: cancelled.map(toItem),
       wasted: wasted.map(toItem),
     };
+  }
+
+  async ownerPerformance(query: DashboardQueryDto) {
+    const requirements = await this.prisma.requirement.findMany({
+      where: this.requirementWhere(query),
+      select: {
+        id: true,
+        status: true,
+        numberOfPositions: true,
+        salesOwner: { select: { id: true, fullName: true } },
+        taOwner: { select: { id: true, fullName: true } },
+        taAssignments: {
+          select: {
+            isPrimary: true,
+            user: { select: { id: true, fullName: true } },
+          },
+          orderBy: [
+            { isPrimary: 'desc' as const },
+            { assignedAt: 'asc' as const },
+          ],
+        },
+      },
+    });
+
+    const counted = requirements.filter((requirement) => requirement.status !== 'CANCELLED');
+    const ids = counted.map((requirement) => requirement.id);
+    const [candidateGroups, joinedGroups, salesUsers, taUsers] = await Promise.all([
+      ids.length
+        ? this.prisma.candidate.groupBy({
+            by: ['requirementId', 'selected'],
+            where: { deletedAt: null, requirementId: { in: ids } },
+            _count: { _all: true },
+          })
+        : [],
+      ids.length
+        ? this.prisma.onboarding.groupBy({
+            by: ['requirementId'],
+            where: {
+              deletedAt: null,
+              statusCode: 'JOINED',
+              requirementId: { in: ids },
+            },
+            _count: { _all: true },
+          })
+        : [],
+      this.prisma.user.findMany({
+        where: {
+          deletedAt: null,
+          isActive: true,
+          role: { in: [Role.SALES, Role.SALES_LEAD] },
+        },
+        select: { id: true, fullName: true },
+        orderBy: { fullName: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          deletedAt: null,
+          isActive: true,
+          role: { in: [Role.TA, Role.TA_LEAD] },
+        },
+        select: { id: true, fullName: true },
+        orderBy: { fullName: 'asc' },
+      }),
+    ]);
+    const candidateMap = new Map<string, number>();
+    const selectedMap = new Map<string, number>();
+    for (const group of candidateGroups) {
+      candidateMap.set(
+        group.requirementId,
+        (candidateMap.get(group.requirementId) ?? 0) + group._count._all,
+      );
+      if (group.selected) {
+        selectedMap.set(
+          group.requirementId,
+          (selectedMap.get(group.requirementId) ?? 0) + group._count._all,
+        );
+      }
+    }
+    const joinedMap = new Map(
+      joinedGroups.map((group) => [group.requirementId, group._count._all]),
+    );
+
+    type OwnerBucket = {
+      id: string;
+      name: string;
+      requirements: number;
+      positions: number;
+      candidates: number;
+      selected: number;
+      openPositions: number;
+      joined: number;
+    };
+    const add = (
+      buckets: Map<string, OwnerBucket>,
+      owner: { id: string; fullName: string } | null,
+      requirement: (typeof counted)[number],
+    ) => {
+      if (!owner) return;
+      const bucket = buckets.get(owner.id) ?? {
+        id: owner.id,
+        name: owner.fullName,
+        requirements: 0,
+        positions: 0,
+        candidates: 0,
+        selected: 0,
+        openPositions: 0,
+        joined: 0,
+      };
+      const joined = joinedMap.get(requirement.id) ?? 0;
+      bucket.requirements += 1;
+      bucket.positions += requirement.numberOfPositions;
+      bucket.candidates += candidateMap.get(requirement.id) ?? 0;
+      bucket.selected += selectedMap.get(requirement.id) ?? 0;
+      bucket.joined += joined;
+      if (requirement.status === 'ACTIVE' || requirement.status === 'ON_HOLD') {
+        bucket.openPositions += Math.max(0, requirement.numberOfPositions - joined);
+      }
+      buckets.set(owner.id, bucket);
+    };
+
+    const blankBucket = (owner: { id: string; fullName: string }): OwnerBucket => ({
+      id: owner.id,
+      name: owner.fullName,
+      requirements: 0,
+      positions: 0,
+      candidates: 0,
+      selected: 0,
+      openPositions: 0,
+      joined: 0,
+    });
+    const salesBuckets = new Map<string, OwnerBucket>(
+      salesUsers.map((owner) => [owner.id, blankBucket(owner)]),
+    );
+    const taBuckets = new Map<string, OwnerBucket>(
+      taUsers.map((owner) => [owner.id, blankBucket(owner)]),
+    );
+    for (const requirement of counted) {
+      add(salesBuckets, requirement.salesOwner, requirement);
+      const primaryTa =
+        requirement.taAssignments.find((assignment) => assignment.isPrimary)?.user ??
+        requirement.taAssignments[0]?.user ??
+        requirement.taOwner ??
+        null;
+      add(taBuckets, primaryTa, requirement);
+    }
+
+    const sourcedPerPosition = (candidates: number, positions: number) =>
+      positions > 0 ? Math.round((candidates / positions) * 10) / 10 : 0;
+
+    const sales = [...salesBuckets.values()]
+      .sort(
+        (a, b) =>
+          b.positions - a.positions || a.name.localeCompare(b.name),
+      )
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        positionsRaised: row.positions,
+        candidatesSourced: row.candidates,
+        selectedCandidates: row.selected,
+      }));
+
+    const ta = [...taBuckets.values()]
+      .sort(
+        (a, b) =>
+          b.candidates - a.candidates || a.name.localeCompare(b.name),
+      )
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        requirements: row.requirements,
+        positionsAssigned: row.positions,
+        candidatesSourced: row.candidates,
+        selectedCandidates: row.selected,
+        sourcedPerPosition: sourcedPerPosition(row.candidates, row.positions),
+        openPositions: row.openPositions,
+        joined: row.joined,
+      }));
+
+    const taTotal = ta.reduce(
+      (total, row) => {
+        total.requirements += row.requirements;
+        total.positionsAssigned += row.positionsAssigned;
+        total.candidatesSourced += row.candidatesSourced;
+        total.selectedCandidates += row.selectedCandidates;
+        total.openPositions += row.openPositions;
+        total.joined += row.joined;
+        return total;
+      },
+      {
+        requirements: 0,
+        positionsAssigned: 0,
+        candidatesSourced: 0,
+        selectedCandidates: 0,
+        sourcedPerPosition: 0,
+        openPositions: 0,
+        joined: 0,
+      },
+    );
+    taTotal.sourcedPerPosition = sourcedPerPosition(
+      taTotal.candidatesSourced,
+      taTotal.positionsAssigned,
+    );
+
+    return { sales, ta, taTotal };
   }
 }

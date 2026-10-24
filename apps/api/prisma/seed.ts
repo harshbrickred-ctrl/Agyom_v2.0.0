@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { seedDemoData } from './demo-seed';
 
 const prisma = new PrismaClient();
 
@@ -252,6 +253,13 @@ async function main() {
     admin: admin.email,
     ...(taLeadEmail ? { taLead: taLeadEmail } : {}),
   });
+
+  const demoDisabled =
+    process.env.SEED_DEMO_DATA === '0' ||
+    process.env.SEED_DEMO_DATA === 'false';
+  if (!demoDisabled) {
+    await seedDemoData(prisma, admin.id);
+  }
 }
 
 main()

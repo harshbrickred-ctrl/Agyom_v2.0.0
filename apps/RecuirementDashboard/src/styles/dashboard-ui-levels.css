@@ -708,6 +708,63 @@
   margin-bottom: 16px;
 }
 
+.dashboard .owner-performance {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.dashboard .owner-performance .chart-card h3 span {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--dash-text-quiet, var(--text-soft));
+}
+
+.dashboard .owner-sales-plot {
+  min-height: 280px;
+}
+
+.dashboard .owner-ta-wrap {
+  overflow-x: auto;
+}
+
+.dashboard .owner-ta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.dashboard .owner-ta-table th {
+  background: #1e3a5f;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.dashboard .owner-ta-table th:first-child,
+.dashboard .owner-ta-table td:first-child {
+  text-align: left;
+}
+
+.dashboard .owner-ta-table td {
+  text-align: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--dash-card-border, var(--border));
+}
+
+.dashboard .owner-ta-table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.dashboard .owner-ta-table tfoot td {
+  font-weight: 700;
+  background: color-mix(in srgb, #1e3a5f 14%, var(--surface));
+}
+
 .dashboard .progress-list {
   gap: 14px;
 }
@@ -964,7 +1021,8 @@
 
 .dashboard .filter-date-pair input {
   flex: 1;
-  min-width: 0;
+  min-width: 148px;
+  color-scheme: light;
 }
 
 .dashboard .filter-date-sep {
@@ -975,8 +1033,11 @@
 .dashboard .filter-field select,
 .dashboard .filter-date-pair input {
   height: 40px;
-  min-width: 0;
   box-sizing: border-box;
+}
+
+.dashboard .filter-field select {
+  min-width: 0;
 }
 
 .dashboard .funnel-stack {
@@ -1018,6 +1079,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+.dashboard .stage-value-row {
+  display: grid;
+  grid-template-columns: 40px repeat(5, minmax(0, 1fr));
+  margin: 0 8px 0 0;
+  color: var(--dash-text-strong, var(--text));
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard .stage-value-row strong {
+  text-align: center;
+  font-weight: 700;
+}
+
 .dashboard .chart-plot {
   width: 100%;
   min-height: 220px;
@@ -1037,11 +1112,18 @@
 
 .dashboard .chart-donut-center {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--surface);
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 

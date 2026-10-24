@@ -17,6 +17,7 @@ import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import DownloadExcelButton from '../../components/DownloadExcelButton';
 
 const FALLBACK_STAGES = [
   { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to SPOC' },
@@ -100,6 +101,25 @@ function stageLabel(code, stages) {
   if (!code) return '';
   const found = stages.find((s) => s.code === String(code).toUpperCase());
   return found?.label || code;
+}
+
+function candidateExportValue(candidate, field, stages, rounds) {
+  let display = candidate[field.key] || '—';
+  if (field.key === 'candidateStage' && candidate[field.key]) {
+    display = stageLabel(candidate[field.key], stages);
+  } else if (field.key === 'interviewRound' && candidate[field.key]) {
+    display = roundLabel(candidate[field.key], rounds);
+  } else if (field.key === 'loiStatus') {
+    const selected = String(candidate.feedbackStatus || '').trim().toLowerCase() === 'selected';
+    if (!selected) {
+      display = '—';
+    } else {
+      display = LOI_OPTIONS.find((option) => option.value === candidate.loiStatus)?.label
+        || candidate.loiStatus
+        || 'Not Received';
+    }
+  }
+  return display;
 }
 
 function roundLabel(code, rounds) {
@@ -1239,6 +1259,14 @@ export default function AssignTaskScreen() {
                 value={listSearch}
                 onChange={setListSearch}
                 placeholder="Search candidates…"
+              />
+              <DownloadExcelButton
+                filename="candidates"
+                rows={displayedCandidates}
+                columns={CANDIDATE_FIELDS.map((field) => ({
+                  label: field.label,
+                  value: (candidate) => candidateExportValue(candidate, field, candidateStages, interviewRounds),
+                }))}
               />
               {selectedTask.candidates.length === 0 ? (
                 <EmptyState

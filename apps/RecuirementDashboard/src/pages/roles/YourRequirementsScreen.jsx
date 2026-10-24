@@ -14,6 +14,7 @@ import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import DownloadExcelButton from '../../components/DownloadExcelButton';
 
 function normalizeMemberList(res) {
   if (Array.isArray(res)) return res;
@@ -598,6 +599,30 @@ export default function YourRequirementsScreen() {
             Clear selection
           </button>
         </div>
+      )}
+
+      {!loading && !error && (
+        <DownloadExcelButton
+          filename="requirements"
+          rows={visible}
+          columns={[
+            { label: 'Req ID', value: (r) => r.publicId || '—' },
+            { label: 'Client', value: (r) => r.client?.name || '—' },
+            { label: 'Role / Skill', value: (r) => r.roleSkill || '—' },
+            { label: 'Job Family', value: (r) => r.jobFamily?.name || r.jobFamilyId || '—' },
+            { label: 'Positions', value: (r) => r.numberOfPositions ?? '—' },
+            { label: 'Fill', value: (r) => `${r.closedPositions ?? 0}/${r.openPositions ?? '—'}` },
+            { label: 'Pipeline', value: (r) => (r.furthestPipelineStage ? String(r.furthestPipelineStage).replace(/_/g, ' ') : '—') },
+            { label: 'RAG', value: (r) => (r.taHandoffSlaRag && r.taHandoffSlaRag !== 'NONE' ? r.taHandoffSlaRag : '—') },
+            { label: 'Priority', value: (r) => r.priorityCode || '—' },
+            { label: 'Job Location', value: (r) => r.jobLocation || '—' },
+            { label: 'Sales Owner', value: (r) => r.salesOwner?.fullName || '—' },
+            { label: 'TA Lead', value: (r) => formatTaLeadNames(r) },
+            { label: 'TA Owner', value: (r) => formatTaOwnerNames(r) },
+            { label: 'Status', value: (r) => r.status || 'ACTIVE' },
+            { label: 'Added', value: (r) => formatDate(r.createdAt) },
+          ]}
+        />
       )}
 
       {loading ? (

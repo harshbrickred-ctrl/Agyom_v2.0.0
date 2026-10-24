@@ -1,10 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class DashboardSummaryDto {
-  @ApiProperty({ example: 8 })
+  @ApiProperty({
+    example: 8,
+    description: 'Active + on hold + cancelled requirements (closed excluded)',
+  })
   totalRequirements!: number;
 
-  @ApiProperty({ example: 17 })
+  @ApiProperty({ example: 5, description: 'Requirements with status ACTIVE' })
+  activeRequirements!: number;
+
+  @ApiProperty({ example: 1, description: 'Requirements with status ON_HOLD' })
+  onHoldRequirements!: number;
+
+  @ApiProperty({
+    example: 17,
+    description: 'Sum of positions on non-cancelled requirements',
+  })
   totalPositions!: number;
 
   @ApiProperty({ example: 16 })
@@ -409,6 +421,107 @@ export class DashboardListsDto {
   duplicateMobiles!: Record<string, unknown>[];
 }
 
+export class DashboardSalesOwnerStatDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty({ example: 'Hemant Jha' })
+  name!: string;
+
+  @ApiProperty({
+    example: 18,
+    description: 'Sum of positions on non-cancelled requirements',
+  })
+  positionsRaised!: number;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Non-deleted candidates on those requirements',
+  })
+  candidatesSourced!: number;
+
+  @ApiProperty({
+    example: 4,
+    description: 'Candidates marked selected on those requirements',
+  })
+  selectedCandidates!: number;
+}
+
+export class DashboardTaOwnerStatDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty({ example: 'Dipanshi' })
+  name!: string;
+
+  @ApiProperty({ example: 14 })
+  requirements!: number;
+
+  @ApiProperty({ example: 19 })
+  positionsAssigned!: number;
+
+  @ApiProperty({ example: 68 })
+  candidatesSourced!: number;
+
+  @ApiProperty({
+    example: 12,
+    description: 'Candidates marked selected on those requirements',
+  })
+  selectedCandidates!: number;
+
+  @ApiProperty({
+    example: 3.6,
+    description: 'Candidates sourced divided by positions assigned, one decimal',
+  })
+  sourcedPerPosition!: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Remaining seats on ACTIVE and ON_HOLD requirements',
+  })
+  openPositions!: number;
+
+  @ApiProperty({
+    example: 0,
+    description: 'Onboardings with status JOINED',
+  })
+  joined!: number;
+}
+
+export class DashboardTaOwnerTotalDto {
+  @ApiProperty({ example: 37 })
+  requirements!: number;
+
+  @ApiProperty({ example: 47 })
+  positionsAssigned!: number;
+
+  @ApiProperty({ example: 101 })
+  candidatesSourced!: number;
+
+  @ApiProperty({ example: 20 })
+  selectedCandidates!: number;
+
+  @ApiProperty({ example: 2.1 })
+  sourcedPerPosition!: number;
+
+  @ApiProperty({ example: 24 })
+  openPositions!: number;
+
+  @ApiProperty({ example: 1 })
+  joined!: number;
+}
+
+export class DashboardOwnerPerformanceDto {
+  @ApiProperty({ type: [DashboardSalesOwnerStatDto] })
+  sales!: DashboardSalesOwnerStatDto[];
+
+  @ApiProperty({ type: [DashboardTaOwnerStatDto] })
+  ta!: DashboardTaOwnerStatDto[];
+
+  @ApiProperty({ type: DashboardTaOwnerTotalDto })
+  taTotal!: DashboardTaOwnerTotalDto;
+}
+
 export class DashboardDto {
   @ApiProperty({ type: DashboardSummaryDto })
   summary!: DashboardSummaryDto;
@@ -443,4 +556,11 @@ export class DashboardDto {
       'Full lists for filter options and every KPI (not only counts)',
   })
   lists!: DashboardListsDto;
+
+  @ApiProperty({
+    type: DashboardOwnerPerformanceDto,
+    description:
+      'Sales-owner and primary TA-owner workload for the same filters',
+  })
+  ownerPerformance!: DashboardOwnerPerformanceDto;
 }

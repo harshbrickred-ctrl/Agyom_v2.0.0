@@ -9,6 +9,7 @@ import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
 
 const STATUS_META = {
@@ -334,6 +335,30 @@ export default function HrCandidatesScreen() {
 
       {error && !modalOpen && <div className="add-error">{error}</div>}
       {success && <div className="add-success">{success}</div>}
+
+      <DownloadExcelButton
+        filename="onboarding"
+        rows={displayed.map((item) => onboardingRow(item, offerStatusOptions))}
+        columns={[
+          { label: 'Onboarding ID', key: 'publicId' },
+          { label: 'Offer ID', key: 'offerPublicId' },
+          { label: 'Candidate ID', key: 'candidatePublicId' },
+          { label: 'Candidate', key: 'candidateName' },
+          { label: 'Role', key: 'clientRole' },
+          { label: 'Req ID', key: 'reqId' },
+          { label: 'Email', key: 'email' },
+          { label: 'Mobile', key: 'mobile' },
+          { label: 'Offer Status', key: 'offerStatusLabel' },
+          { label: 'CTC', key: 'ctcRate' },
+          { label: 'HR Owner', key: 'hrOwnerName' },
+          { label: 'Expected DOJ', key: 'expectedDoj' },
+          { label: 'Actual DOJ', key: 'actualDoj' },
+          { label: 'Pending Docs', value: (row) => (row.pendingDocs ? 'Yes' : 'No') },
+          { label: 'BGV', key: 'bgvStatus' },
+          { label: 'Status', key: 'onboardingStatus' },
+          { label: 'Req Status', key: 'requirementStatus' },
+        ]}
+      />
 
       {rows.length === 0 ? (
         <EmptyState

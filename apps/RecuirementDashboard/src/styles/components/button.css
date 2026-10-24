@@ -53,6 +53,16 @@
   background: var(--hover);
 }
 
+.excel-download-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 10px;
+}
+
+.excel-download-btn {
+  height: 34px;
+}
+
 .btn-ghost {
   background: var(--bg-soft);
   color: var(--brand);

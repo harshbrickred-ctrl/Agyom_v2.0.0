@@ -236,6 +236,8 @@ const HERO_KPI_LABELS = [
   'onHoldRequirements',
   'cancelledRequirements',
   'totalPositions',
+  'openPositions',
+  'closedPositions',
 ];
 const SIDEBAR_COLLAPSE_KEY = 'sst-sidebar-collapsed';
 

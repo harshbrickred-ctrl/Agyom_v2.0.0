@@ -8,6 +8,7 @@ import DownloadExcelButton from './DownloadExcelButton';
 const POSITIONS_COLOR = '#38bdf8';
 const CANDIDATES_COLOR = '#e0b44a';
 const SELECTED_COLOR = '#34d399';
+const OWNER_SLOT = 188;
 
 function cssVar(name, fallback = '#888') {
   if (typeof window === 'undefined') return fallback;
@@ -40,7 +41,7 @@ function ChartTooltip({ active, payload, label }) {
   );
 }
 
-function OwnerComparisonChart({ rows, positionKey, positionLabel }) {
+function OwnerComparisonChart({ rows, positionKey, positionLabel, packed = false }) {
   const { theme } = useTheme();
   void theme;
   const muted = cssVar('--dash-text-quiet', cssVar('--text-soft', '#8aa6b8'));
@@ -54,8 +55,12 @@ function OwnerComparisonChart({ rows, positionKey, positionLabel }) {
     { key: 'selectedCandidates', name: 'Selected candidates', fill: SELECTED_COLOR },
   ];
 
+  const plotStyle = packed
+    ? { width: Math.max(rows.length, 1) * OWNER_SLOT, maxWidth: '100%' }
+    : undefined;
+
   return (
-    <div className="chart-plot owner-sales-plot">
+    <div className="chart-plot owner-sales-plot" style={plotStyle}>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart
           key={rows.map((row) => `${row.id}:${row[positionKey]}:${row.candidatesSourced}:${row.selectedCandidates}`).join('|')}
@@ -113,6 +118,7 @@ export default function OwnerPerformance({ data }) {
           rows={sales}
           positionKey="positionsRaised"
           positionLabel="Positions raised"
+          packed
         />
       </div>
 

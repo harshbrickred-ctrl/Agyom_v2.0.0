@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import mammoth from 'mammoth';
-import { PDFParse } from 'pdf-parse';
 import {
   resumeFileExtension,
   sanitizeFileName,
@@ -109,6 +108,9 @@ function extractName(source: string, emailIndex: number): string | null {
 }
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
+  // Load pdf-parse only when a PDF is parsed. Its module init needs DOMMatrix,
+  // which is missing on the Vercel Node runtime and would crash every request.
+  const { PDFParse } = await import('pdf-parse');
   const parser = new PDFParse({ data: buffer });
   try {
     const result = await parser.getText();

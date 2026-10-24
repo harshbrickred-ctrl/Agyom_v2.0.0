@@ -1,7 +1,7 @@
 import { useTheme } from '../context/ThemeContext';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Sector,
 } from 'recharts';
 import {
   IconChart, IconPie, IconBar, IconTrending,
@@ -69,10 +69,10 @@ function ragBreakdown(rows, colors) {
 
 function pipelineFunnel(rows) {
   return [
-    { stage: 'In Pipeline', value: rows.reduce((s, r) => s + (r.candidatesInPipeline || 0), 0) },
-    { stage: 'Selected', value: rows.reduce((s, r) => s + (r.selectedCandidates || 0), 0) },
-    { stage: 'Offers Released', value: rows.reduce((s, r) => s + (r.offersReleased || 0), 0) },
-    { stage: 'Offers Accepted', value: rows.reduce((s, r) => s + (r.offersAccepted || 0), 0) },
+    { stage: 'Pipeline', value: rows.reduce((s, r) => s + (r.candidatesInPipeline || 0), 0) },
+    { stage: 'Client Selected', value: rows.reduce((s, r) => s + (r.selectedCandidates || 0), 0) },
+    { stage: 'Offer Release', value: rows.reduce((s, r) => s + (r.offersReleased || 0), 0) },
+    { stage: 'Offer Accepted', value: rows.reduce((s, r) => s + (r.offersAccepted || 0), 0) },
     { stage: 'Joined', value: rows.reduce((s, r) => s + (r.candidatesJoined || 0), 0) },
   ];
 }
@@ -87,13 +87,7 @@ function positionStatus(rows, colors) {
 }
 
 function stageConversion(funnel) {
-  const pct = (next, prev) => (prev > 0 ? Math.round((next / prev) * 100) : 0);
-  return [
-    { name: 'Selected / Pipeline', value: pct(funnel[1]?.value, funnel[0]?.value) },
-    { name: 'Offers / Selected', value: pct(funnel[2]?.value, funnel[1]?.value) },
-    { name: 'Accepted / Offers', value: pct(funnel[3]?.value, funnel[2]?.value) },
-    { name: 'Joined / Accepted', value: pct(funnel[4]?.value, funnel[3]?.value) },
-  ];
+  return funnel.map((stage) => ({ name: stage.stage, value: stage.value }));
 }
 
 function ChartTooltip({ active, payload, label, suffix = '' }) {
@@ -139,6 +133,13 @@ function ClientBarChart({ data, color, empty }) {
   );
 }
 
+const DONUT_INNER = 52;
+const DONUT_OUTER = 74;
+
+function StableDonutSector(props) {
+  return <Sector {...props} innerRadius={DONUT_INNER} outerRadius={DONUT_OUTER} />;
+}
+
 function DonutChart({ data, centerLabel, total }) {
   const hasData = data.some((d) => d.value > 0);
   if (!hasData) {
@@ -153,17 +154,24 @@ function DonutChart({ data, centerLabel, total }) {
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={52}
-              outerRadius={74}
+              innerRadius={DONUT_INNER}
+              outerRadius={DONUT_OUTER}
               paddingAngle={2}
               stroke="none"
+              shape={StableDonutSector}
+              activeShape={StableDonutSector}
               isAnimationActive={!reduceMotion()}
             >
               {data.map((d) => (
                 <Cell key={d.name} fill={d.color} />
               ))}
             </Pie>
-            <Tooltip content={<ChartTooltip />} />
+            <Tooltip
+              content={<ChartTooltip />}
+              offset={28}
+              allowEscapeViewBox={{ x: true, y: true }}
+              wrapperStyle={{ zIndex: 1 }}
+            />
           </PieChart>
         </ResponsiveContainer>
         <div className="chart-donut-center">
@@ -253,20 +261,25 @@ export default function DashboardCharts({
       {funnelHasData && (
         <div className="chart-card span-2">
           <h3><IconTrending /> Stage conversion</h3>
+          <div className="stage-value-row" aria-hidden="true">
+            <span />
+            {conversion.map((stage) => (
+              <strong key={stage.name}>{stage.value}</strong>
+            ))}
+          </div>
           <div className="chart-plot">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={conversion} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
                 <YAxis
-                  domain={[0, 100]}
+                  allowDecimals={false}
                   tick={{ fill: colors.muted, fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={(v) => `${v}%`}
                   width={40}
                 />
-                <Tooltip content={<ChartTooltip suffix="%" />} cursor={{ fill: 'rgba(14, 165, 233, 0.08)' }} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(14, 165, 233, 0.08)' }} />
                 <Bar dataKey="value" fill={colors.primary} radius={[6, 6, 0, 0]} maxBarSize={42} isAnimationActive={!reduceMotion()} />
               </BarChart>
             </ResponsiveContainer>

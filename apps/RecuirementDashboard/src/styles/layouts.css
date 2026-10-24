@@ -28,12 +28,13 @@
 
 .sidebar-brand img,
 .logo {
-  width: auto;
+  width: 100%;
   height: auto;
   max-width: 100%;
-  max-height: 48px;
+  max-height: 120px;
   object-fit: contain;
   display: block;
+  border-radius: 12px;
 }
 
 .sidebar-brand img {

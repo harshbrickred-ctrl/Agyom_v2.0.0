@@ -1,4 +1,5 @@
 import { DASHBOARD_COLUMNS, ROLE_COLUMNS } from '../config/columns';
+import DownloadExcelButton from './DownloadExcelButton';
 
 function Badge({ type, value }) {
   if (type === 'rag') {
@@ -15,6 +16,15 @@ export default function DataTable({ rows, variant = 'full' }) {
   const columns = variant === 'full' ? DASHBOARD_COLUMNS : ROLE_COLUMNS;
 
   return (
+    <>
+    <DownloadExcelButton
+      filename={variant === 'full' ? 'dashboard' : 'role-requirements'}
+      columns={columns.map((column) => ({
+        label: column.label,
+        value: (row) => row[column.key] ?? '',
+      }))}
+      rows={rows}
+    />
     <div className="table-wrap">
       <table className="data-table">
         <thead>
@@ -37,5 +47,6 @@ export default function DataTable({ rows, variant = 'full' }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }

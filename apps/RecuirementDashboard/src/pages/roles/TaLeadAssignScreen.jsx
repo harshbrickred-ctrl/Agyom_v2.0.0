@@ -9,6 +9,7 @@ import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
 
 /** TA Lead workspace: view all requirements, assign TA owners, view pipelines. */
@@ -269,6 +270,25 @@ export default function TaLeadAssignScreen() {
           value={listSearch}
           onChange={setListSearch}
           placeholder="Search req ID, client, role…"
+        />
+      )}
+
+      {!loading && !error && (
+        <DownloadExcelButton
+          filename="ta-assignments"
+          rows={visible}
+          columns={[
+            { label: 'Req ID', value: (r) => r.publicId || '—' },
+            { label: 'Client', value: (r) => r.client?.name || '—' },
+            { label: 'Role / Skill', value: (r) => r.roleSkill || '—' },
+            { label: 'Positions', value: (r) => r.numberOfPositions ?? '—' },
+            { label: 'Priority', value: (r) => r.priorityCode || '—' },
+            { label: 'Sales Owner', value: (r) => r.salesOwner?.fullName || '—' },
+            { label: 'TA Leads', value: (r) => formatTaLeadNames(r) },
+            { label: 'TA Owners', value: (r) => (isUnassigned(r) ? '—' : formatTaOwnerNames(r)) },
+            { label: 'Assignment', value: (r) => assignmentLabel(r) },
+            { label: 'Status', value: (r) => r.status || 'ACTIVE' },
+          ]}
         />
       )}
 

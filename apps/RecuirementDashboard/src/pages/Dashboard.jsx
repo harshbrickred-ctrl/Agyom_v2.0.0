@@ -8,6 +8,7 @@ import Logo from '../assets/Logo';
 import KpiCards from '../components/KpiCards';
 import DataTable from '../components/DataTable';
 import DashboardCharts from '../components/DashboardCharts';
+import OwnerPerformance from '../components/OwnerPerformance';
 import FilterBar from '../components/FilterBar';
 import { DASHBOARD_COLUMNS } from '../config/columns';
 import {
@@ -17,6 +18,7 @@ import {
 import NotificationBell from '../components/NotificationBell';
 import { Modal, ScreenSkeleton } from '../components/ui';
 import TableSearch from '../components/TableSearch';
+import DownloadExcelButton from '../components/DownloadExcelButton';
 import { matchesQuery } from '../utils/listSearch';
 import { formatDate, isIsoDateString } from '../utils/formatDate';
 import SalesScreen from './roles/SalesScreen';
@@ -98,6 +100,9 @@ const SECONDARY_TABS = {
 
 const KPI_DISPLAY_LABELS = [
   'totalRequirements',
+  'activeRequirements',
+  'onHoldRequirements',
+  'cancelledRequirements',
   'totalPositions',
   'openPositions',
   'closedPositions',
@@ -106,15 +111,16 @@ const KPI_DISPLAY_LABELS = [
   'offersReleased',
   'offersAccepted',
   'candidatesJoined',
-  'cancelledRequirements',
   'overdueRequirements',
   'wastedSourcing',
 ];
 
 const KPI_LIST_MAP = {
   totalRequirements: 'requirements',
+  activeRequirements: 'requirements',
+  onHoldRequirements: 'requirements',
   totalPositions: 'requirements',
-  openPositions: 'requirements',
+  openPositions: 'openPositions',
   closedPositions: 'closedPositions',
   candidatesInPipeline: 'candidatesInPipeline',
   selectedCandidates: 'selectedCandidates',
@@ -130,7 +136,9 @@ const KPI_LIST_MAP = {
 
 const KPI_LABELS = {
   totalRequirements: 'Total Requirements',
-  totalPositions: 'Total Positions',
+  activeRequirements: 'Active Requirements',
+  onHoldRequirements: 'On Hold Requirements',
+  totalPositions: 'No. of Positions',
   openPositions: 'Open Positions',
   closedPositions: 'Closed Positions',
   candidatesInPipeline: 'Candidates in Pipeline',
@@ -154,6 +162,8 @@ function getKpiLabel(kpi) {
 function computeKpis(rows) {
   return {
     totalRequirements: rows.reduce((s, r) => s + (r.totalRequirements || 0), 0),
+    activeRequirements: rows.reduce((s, r) => s + (r.activeRequirements || 0), 0),
+    onHoldRequirements: rows.reduce((s, r) => s + (r.onHoldRequirements || 0), 0),
     totalPositions: rows.reduce((s, r) => s + (r.totalPositions || 0), 0),
     openPositions: rows.reduce((s, r) => s + (r.openPositions || 0), 0),
     closedPositions: rows.reduce((s, r) => s + (r.closedPositions || 0), 0),
@@ -205,7 +215,13 @@ function attachKpiPercentages(kpis) {
   };
 
   return kpis.map((kpi) => {
-    const noPercentage = ['totalRequirements', 'totalPositions'].includes(kpi.label);
+    const noPercentage = [
+      'totalRequirements',
+      'activeRequirements',
+      'onHoldRequirements',
+      'cancelledRequirements',
+      'totalPositions',
+    ].includes(kpi.label);
     const progress = kpi.progress ?? progressMap[kpi.label];
     if (noPercentage || progress == null || Number.isNaN(progress) || !Number.isFinite(progress)) {
       return { ...kpi, noPercentage: true };
@@ -214,7 +230,15 @@ function attachKpiPercentages(kpis) {
   });
 }
 
-const HERO_KPI_LABELS = ['openPositions', 'candidatesInPipeline', 'offersAccepted', 'overdueRequirements'];
+const HERO_KPI_LABELS = [
+  'totalRequirements',
+  'activeRequirements',
+  'onHoldRequirements',
+  'cancelledRequirements',
+  'totalPositions',
+  'openPositions',
+  'closedPositions',
+];
 const SIDEBAR_COLLAPSE_KEY = 'sst-sidebar-collapsed';
 
 export default function Dashboard() {
@@ -245,14 +269,18 @@ export default function Dashboard() {
   const [openPositionsOnClient, setOpenPositionsOnClient] = useState(null);
   const [closedPositionsOnClient, setClosedPositionsOnClient] = useState(null);
   const [requirementRagSummary, setRequirementRagSummary] = useState(null);
+  const [ownerPerformance, setOwnerPerformance] = useState(null);
   const [dashboardLists, setDashboardLists] = useState({});
   const [taOwnerOptions, setTaOwnerOptions] = useState([]);
   const [salesOwnerOptions, setSalesOwnerOptions] = useState([]);
   const [clientOptions, setClientOptions] = useState([]);
   const [jobFamilyOptions, setJobFamilyOptions] = useState([]);
   // When the backend returns a summary-only response, display KPIs from the summary object
-  // Fetch the main dashboard grid from its own API endpoint.
+  // Refetch whenever the overview is opened so a requirement added on another
+  // tab shows up in the owner charts without a manual reload.
+  const dashboardTab = searchParams.get('tab') || 'overview';
   useEffect(() => {
+    if (dashboardTab !== 'overview') return undefined;
     let active = true;
     setLoading(true);
     const payload = {};
@@ -291,6 +319,11 @@ export default function Dashboard() {
           setRequirementRagSummary(null);
         }
         setDashboardLists(typeof res?.lists === 'object' && res?.lists !== null ? res.lists : {});
+        setOwnerPerformance(
+          res?.ownerPerformance && typeof res.ownerPerformance === 'object'
+            ? res.ownerPerformance
+            : null,
+        );
         const hasRows = Array.isArray(res?.rows);
         if (hasRows) {
           const rowsData = res.rows || [];
@@ -309,10 +342,14 @@ export default function Dashboard() {
           );
         }
       })
-      .catch(() => active && setRows([]))
+      .catch(() => {
+        if (!active) return;
+        setRows([]);
+        setOwnerPerformance(null);
+      })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [filters]);
+  }, [filters, dashboardTab]);
 
   useEffect(() => {
     let active = true;
@@ -427,7 +464,9 @@ export default function Dashboard() {
 
   const rawKpis = rows.length ? filteredKpis : kpis.filter((k) => KPI_DISPLAY_LABELS.includes(k.label));
   const displayedKpis = attachKpiPercentages(rawKpis);
-  const displayedKpisFiltered = displayedKpis.filter((k) => KPI_DISPLAY_LABELS.includes(k.label));
+  const displayedKpisFiltered = displayedKpis
+    .filter((k) => KPI_DISPLAY_LABELS.includes(k.label))
+    .sort((a, b) => KPI_DISPLAY_LABELS.indexOf(a.label) - KPI_DISPLAY_LABELS.indexOf(b.label));
 
   return (
     <div className="dashboard" data-ui-levels="L1 L2 L3 L4 L5 L6">
@@ -528,9 +567,18 @@ export default function Dashboard() {
                 heroLabels={HERO_KPI_LABELS}
                 onCardClick={(label) => {
                   const listName = KPI_LIST_MAP[label];
-                  const listRows = listName && Array.isArray(dashboardLists[listName])
+                  let listRows = listName && Array.isArray(dashboardLists[listName])
                     ? dashboardLists[listName]
                     : filteredRows;
+                  if (label === 'activeRequirements') {
+                    listRows = (dashboardLists.requirements || []).filter((row) => row.status === 'ACTIVE');
+                  } else if (label === 'onHoldRequirements') {
+                    listRows = (dashboardLists.requirements || []).filter((row) => row.status === 'ON_HOLD');
+                  } else if (label === 'totalRequirements') {
+                    listRows = (dashboardLists.requirements || []).filter((row) =>
+                      row.status === 'ACTIVE' || row.status === 'ON_HOLD' || row.status === 'CANCELLED',
+                    );
+                  }
                   setModalKpi({ label, rows: listRows, listKey: listName || null });
                 }}
               />
@@ -541,6 +589,9 @@ export default function Dashboard() {
                 closedPositionsOnClient={closedPositionsOnClient}
                 requirementRagSummary={requirementRagSummary}
               />
+              {userType === 'admin' && (
+                <OwnerPerformance data={ownerPerformance} />
+              )}
               {/* <DataTable rows={filteredRows} variant="full" /> */}
             </>
           )
@@ -576,6 +627,28 @@ export default function Dashboard() {
       </main>
     </div>
   );
+}
+
+const EXACT_COUNT_KEYS = new Set(['numberOfPositions', 'openPositions']);
+
+function matchesKpiRow(query, row, columns, formatCell) {
+  const q = String(query || '').trim();
+  if (!q) return true;
+  if (/^\d+$/.test(q)) {
+    const n = Number(q);
+    return columns.some((col) => {
+      const raw = row[col.key];
+      if (EXACT_COUNT_KEYS.has(col.key)) {
+        if (raw == null || raw === '') return false;
+        return Number(raw) === n;
+      }
+      if (raw instanceof Date || isIsoDateString(raw)) return false;
+      const text = String(formatCell(raw) ?? '').trim();
+      if (!text || text === '—' || isIsoDateString(text) || /^\d+$/.test(text)) return false;
+      return text.toLowerCase().split(/[^0-9a-z]+/).filter(Boolean).includes(q);
+    });
+  }
+  return matchesQuery(q, ...columns.map((col) => formatCell(row[col.key])));
 }
 
 // Modal listing the rows that make up a clicked KPI.
@@ -643,7 +716,7 @@ function KpiModal({ kpi, onClose }) {
   };
 
   const visibleItems = sortedItems.filter((row) =>
-    matchesQuery(search, ...columns.map((col) => formatCell(row[col.key]))),
+    matchesKpiRow(search, row, columns, formatCell),
   );
 
   return (
@@ -659,6 +732,14 @@ function KpiModal({ kpi, onClose }) {
         </>
       )}
     >
+      <DownloadExcelButton
+        filename={getKpiLabel({ label: key })}
+        rows={visibleItems}
+        columns={columns.map((col) => ({
+          label: col.label,
+          value: (row) => formatCell(row[col.key]),
+        }))}
+      />
       {sortedItems.length === 0 ? (
         <div className="kpi-modal-empty">No records for this metric.</div>
       ) : (

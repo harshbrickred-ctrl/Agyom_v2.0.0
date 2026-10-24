@@ -7,6 +7,7 @@ import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
 
 const HR_OFFER_STATUS_CODES = ['RELEASED', 'ACCEPTED', 'DECLINED', 'HOLD', 'BACKOUT'];
@@ -298,6 +299,26 @@ export default function OffersScreen() {
           />
         </div>
       )}
+
+      <DownloadExcelButton
+        filename="offers"
+        rows={displayedOffers.map((offer) => offerRow(offer, selectOptions))}
+        columns={[
+          { label: 'Offer ID', key: 'publicId' },
+          { label: 'Candidate ID', key: 'candidatePublicId' },
+          { label: 'Candidate', key: 'candidateName' },
+          { label: 'Position', key: 'position' },
+          { label: 'Client', key: 'client' },
+          { label: 'Email', key: 'email' },
+          { label: 'Mobile', key: 'mobile' },
+          { label: 'Offer Status', key: 'statusLabel' },
+          { label: 'CTC Rate', key: 'ctcRate' },
+          { label: 'Selected', key: 'selectedDate' },
+          { label: 'Initiated', key: 'offerInitiatedDate' },
+          { label: 'Released', key: 'offerReleasedDate' },
+          { label: 'Expected DOJ', key: 'expectedDoj' },
+        ]}
+      />
 
       {visibleOffers.length === 0 ? (
         <EmptyState

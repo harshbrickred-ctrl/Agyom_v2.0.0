@@ -12,7 +12,9 @@
 
 export const USE_MOCK = false; // <-- backend is live
 
-export const API_BASE_URL = ''; // endpoints already include /api; proxied to backend via vite.config.js (avoids CORS in dev)
+// Empty in local dev so Vite proxies /api to the Nest server.
+// Set VITE_API_URL to the API origin (no trailing slash) for Vercel.
+export const API_BASE_URL = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
 export const ENDPOINTS = {
   // ---- Auth ----

@@ -12,6 +12,8 @@ const RISK_KPI = new Set([
 
 const KPI_META = {
   totalRequirements: { Icon: IconBriefcase, target: 100 },
+  activeRequirements: { Icon: IconBriefcase, target: 100 },
+  onHoldRequirements: { Icon: IconClipboardCheck, target: 50 },
   totalPositions: { Icon: IconFolderOpen, target: 200 },
   openPositions: { Icon: IconFolderOpen, target: 150 },
   closedPositions: { Icon: IconFolderOpen, target: 100 },
@@ -33,7 +35,9 @@ const KPI_META = {
 
 const KPI_LABELS = {
   totalRequirements: 'Total Requirements',
-  totalPositions: 'Total Positions',
+  activeRequirements: 'Active Requirements',
+  onHoldRequirements: 'On Hold Requirements',
+  totalPositions: 'No. of Positions',
   openPositions: 'Open Positions',
   closedPositions: 'Closed Positions',
   pendingSalesHandoff: 'Pending Sales Handoff',

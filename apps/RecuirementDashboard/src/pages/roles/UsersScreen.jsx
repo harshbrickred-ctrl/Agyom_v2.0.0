@@ -8,6 +8,7 @@ import { formatDate } from '../../utils/formatDate';
 import { useToast } from '../../context/ToastContext';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState } from '../../components/ui';
+import DownloadExcelButton from '../../components/DownloadExcelButton';
 
 const EMPTY_FORM = {
   email: '',
@@ -382,6 +383,20 @@ export default function UsersScreen() {
       {listError && <div className="add-error">{listError}</div>}
       {error && <div className="add-error">{error}</div>}
       {success && <div className="add-success">{success}</div>}
+
+      {!listLoading && (
+        <DownloadExcelButton
+          filename="users"
+          rows={users}
+          columns={[
+            { label: 'Full name', value: (u) => (isSelf(u.id) ? `${u.fullName} (you)` : u.fullName) },
+            { label: 'Email', value: (u) => u.email },
+            { label: 'Role', value: (u) => roleLabel(roles, u.role) },
+            { label: 'Status', value: (u) => (u.isActive ? 'Active' : 'Inactive') },
+            { label: 'Created', value: (u) => formatDate(u.createdAt) },
+          ]}
+        />
+      )}
 
       {!listLoading && users.length === 0 ? (
         <EmptyState

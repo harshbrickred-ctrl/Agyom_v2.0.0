@@ -6,6 +6,7 @@ import {
 import {
   IconChart, IconPie, IconBar, IconTrending,
 } from './Icons';
+import InfoTip from './InfoTip';
 
 const FALLBACK = {
   success: '#16a34a',
@@ -239,6 +240,7 @@ export default function DashboardCharts({
   return (
     <div className="charts-grid">
       <div className="chart-card span-2">
+        <InfoTip text="Counts at each hiring stage, using the same rules as the KPI cards. Pipeline, Selected, Offers Released, Offers Accepted, and Joined do not share a person." />
         <h3><IconChart /> Recruitment Funnel</h3>
         {funnelHasData ? (
           <div className="funnel-stack">
@@ -260,6 +262,7 @@ export default function DashboardCharts({
 
       {funnelHasData && (
         <div className="chart-card span-2">
+          <InfoTip text="The same stage counts as the funnel, drawn as bars. Each bar is the number of people at that stage, not a percentage moving from one stage to the next." />
           <h3><IconTrending /> Stage conversion</h3>
           <div className="stage-value-row" aria-hidden="true">
             <span />
@@ -288,21 +291,25 @@ export default function DashboardCharts({
       )}
 
       <div className="chart-card">
+        <InfoTip text="Unfilled seats grouped by client. Cancelled requirements are not included. A client is listed when it still has at least one open seat." />
         <h3><IconBar /> Open Positions on Client</h3>
         <ClientBarChart data={openByClient} color={colors.success} empty="No data found." />
       </div>
 
       <div className="chart-card">
+        <InfoTip text="People whose onboarding status is Joined, grouped by client. When more than six clients have joined people, the chart shows the six with the most." />
         <h3><IconBar /> Closed Positions on Client</h3>
         <ClientBarChart data={closedByClient} color={colors.danger} empty="No data found." />
       </div>
 
       <div className="chart-card">
+        <InfoTip text="TA handoff timing. Green is 2 days or less from the requirement date to handoff, Amber is 3 to 5 days, and Red is longer. If handoff has not happened, the age runs to today. After handoff, the age stays at the handoff date. Closed and Cancelled requirements are not included." />
         <h3><IconPie /> Requirement RAG</h3>
         <DonutChart data={rag} centerLabel="Reqs" total={ragTotal} />
       </div>
 
       <div className="chart-card">
+        <InfoTip text="Open is unfilled seats on requirements that are not Cancelled. Closed is one count per person whose onboarding status is Joined. These match the Open Positions and Closed Positions cards." />
         <h3><IconPie /> Position Status</h3>
         <DonutChart data={status} centerLabel="Positions" total={statusTotal} />
       </div>

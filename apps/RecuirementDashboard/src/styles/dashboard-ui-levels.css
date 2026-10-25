@@ -841,6 +841,10 @@
   box-shadow: var(--shadow-sm);
 }
 
+.dashboard .kpi-card:has(.kpi-info) {
+  overflow: visible;
+}
+
 .dashboard .kpi-card::before {
   border-radius: 14px 0 0 14px;
 }
@@ -958,6 +962,14 @@
 
 .dashboard .kpi-card-compact .kpi-label {
   font-size: 0.6875rem;
+}
+
+.dashboard .kpi-card-compact .kpi-info {
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
 }
 
 .dashboard .kpi-more {

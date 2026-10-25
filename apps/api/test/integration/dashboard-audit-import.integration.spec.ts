@@ -70,6 +70,65 @@ describe('Dashboard / Audit / Import (Phase E)', () => {
     expect(res.status).toBeLessThan(300);
   });
 
+  it('IT-DSH-003: admin KPI counts match the records behind each card', async () => {
+    const res = await api('POST', '/dashboard', {
+      token: personas.ADMIN.token,
+      body: {},
+    });
+    expect(res.status).toBeGreaterThanOrEqual(200);
+    expect(res.status).toBeLessThan(300);
+    const summary = res.data.summary;
+    const lists = res.data.lists;
+    const requirements = lists.requirements as { status: string }[];
+    const countStatus = (status: string) =>
+      requirements.filter((row) => row.status === status).length;
+
+    expect(summary.activeRequirements).toBe(countStatus('ACTIVE'));
+    expect(summary.onHoldRequirements).toBe(countStatus('ON_HOLD'));
+    expect(summary.cancelledRequirements).toBe(countStatus('CANCELLED'));
+    expect(summary.cancelledRequirements).toBe(lists.cancelledRequirements.length);
+    expect(summary.totalRequirements).toBe(
+      summary.activeRequirements +
+        summary.onHoldRequirements +
+        summary.cancelledRequirements,
+    );
+
+    const positionRows = lists.totalPositions as { status: string }[];
+    const filledSeats = positionRows.filter((row) => row.status === 'CLOSED').length;
+    expect(summary.totalPositions).toBe(positionRows.length);
+    expect(summary.openPositions).toBe(lists.openPositions.length);
+    expect(summary.totalPositions).toBe(lists.openPositions.length + filledSeats);
+
+    expect(summary.closedPositions).toBe(lists.closedPositions.length);
+    expect(summary.candidatesJoined).toBe(lists.candidatesJoined.length);
+    expect(summary.closedPositions).toBe(summary.candidatesJoined);
+    expect(summary.candidatesInPipeline).toBe(lists.candidatesInPipeline.length);
+    expect(summary.selectedCandidates).toBe(lists.selectedCandidates.length);
+    expect(summary.offersReleased).toBe(lists.offersReleased.length);
+    expect(summary.offersAccepted).toBe(lists.offersAccepted.length);
+    expect(summary.overdueRequirements).toBe(lists.overdueRequirements.length);
+    expect(summary.wastedSourcing).toBe(lists.wastedSourcing.length);
+
+    const candidateId = (row: { id?: string; candidateId?: string; candidate?: { id?: string } }) =>
+      row.candidate?.id || row.candidateId || row.id;
+    const stages = [
+      lists.candidatesInPipeline,
+      lists.selectedCandidates,
+      lists.offersReleased,
+      lists.offersAccepted,
+      lists.candidatesJoined,
+    ].map((rows: { id?: string; candidateId?: string; candidate?: { id?: string } }[]) =>
+      new Set(rows.map(candidateId)),
+    );
+    const seen = new Set<string>();
+    for (const stage of stages) {
+      for (const id of stage) {
+        expect(seen.has(id)).toBe(false);
+        seen.add(id);
+      }
+    }
+  });
+
   it('IT-AUD-001/003: Admin sees audit; Sales 403', async () => {
     const ok = await api('GET', '/audit-logs?pageSize=5', {
       token: personas.ADMIN.token,

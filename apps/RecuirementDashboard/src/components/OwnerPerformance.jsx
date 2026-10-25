@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { IconBar, IconUsers } from './Icons';
 import DownloadExcelButton from './DownloadExcelButton';
+import InfoTip from './InfoTip';
 
 const POSITIONS_COLOR = '#38bdf8';
 const CANDIDATES_COLOR = '#e0b44a';
@@ -113,6 +114,7 @@ export default function OwnerPerformance({ data }) {
   return (
     <div className="owner-performance">
       <div className="chart-card">
+        <InfoTip text="Every active sales owner. Positions raised are seats on requirements they own that are not Cancelled. Candidates sourced are all candidates on those requirements. Selected are candidates marked selected." />
         <h3><IconBar /> Sales Owner: Positions Raised vs Candidates Sourced vs Selected</h3>
         <OwnerComparisonChart
           rows={sales}
@@ -123,6 +125,7 @@ export default function OwnerPerformance({ data }) {
       </div>
 
       <div className="chart-card">
+        <InfoTip text="Every active TA owner, counted on the primary TA for each requirement. Positions assigned, candidates sourced, and selected follow the sales chart, and Cancelled requirements are excluded." />
         <h3><IconUsers /> TA Owner: Positions Assigned vs Candidates Sourced vs Selected</h3>
         <OwnerComparisonChart
           rows={ta}
@@ -132,6 +135,7 @@ export default function OwnerPerformance({ data }) {
       </div>
 
       <div className="chart-card">
+        <InfoTip text="The same TA owners as the chart. Sourced per position is candidates divided by assigned seats. Open positions are unfilled seats on Active and On Hold requirements. Joined is people whose onboarding status is Joined." />
         <h3>
           <IconUsers /> By TA Owner
           <span>showing {ta.length} TA {ta.length === 1 ? 'owner' : 'owners'}</span>

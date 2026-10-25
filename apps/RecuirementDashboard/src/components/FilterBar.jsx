@@ -4,6 +4,7 @@
 import {
   IconUser, IconUsers, IconBriefcase, IconTarget, IconFilter, IconFolderOpen, IconCalendar, IconX,
 } from './Icons';
+import InfoTip from './InfoTip';
 
 function uniqueValues(rows, key) {
   const values = Array.from(new Set(rows.map((r) => r[key]).filter(Boolean))).sort();
@@ -58,6 +59,10 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
       <div className="filter-bar-head">
         <IconFilter />
         <span>Filters</span>
+        <InfoTip
+          inline
+          text="Narrows every metric, chart, and owner table on this page by TA owner, sales owner, client, job family, priority, and requirement date."
+        />
         {activeCount > 0 && <span className="filter-count">{activeCount} active</span>}
         {activeCount > 0 && (
           <button type="button" className="filter-clear" onClick={clearAll}>

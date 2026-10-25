@@ -104,6 +104,123 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.kpi-card:has(.kpi-info) {
+  overflow: visible;
+}
+
+.kpi-card:has(.kpi-info) .kpi-copy {
+  padding-right: 22px;
+}
+
+.kpi-card:focus-within {
+  z-index: 6;
+}
+
+.kpi-info {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  cursor: help;
+}
+
+.kpi-info:hover,
+.kpi-info:focus-visible {
+  color: var(--text);
+  border-color: var(--brand);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.kpi-info-tip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--tooltip-bg, var(--surface));
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1.4;
+  text-align: left;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.kpi-info:hover .kpi-info-tip,
+.kpi-info:focus .kpi-info-tip,
+.kpi-info:focus-visible .kpi-info-tip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.kpi-info--inline {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 auto;
+}
+
+.kpi-info--inline .kpi-info-tip {
+  left: 0;
+  right: auto;
+  width: 280px;
+}
+
+.chart-card:has(.kpi-info),
+.filter-bar:has(.kpi-info) {
+  overflow: visible;
+}
+
+.chart-card:has(.kpi-info:hover),
+.chart-card:has(.kpi-info:focus),
+.chart-card:has(.kpi-info:focus-visible),
+.filter-bar:has(.kpi-info:hover),
+.filter-bar:has(.kpi-info:focus),
+.kpi-section:has(.kpi-info:hover),
+.kpi-more:has(.kpi-info:hover) {
+  z-index: 6;
+}
+
+.chart-card .kpi-info-tip {
+  width: 280px;
+}
+
+.chart-card:has(> .kpi-info) h3 {
+  padding-right: 28px;
+}
+
+.kpi-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Charts */
 .charts-grid {
   display: grid;

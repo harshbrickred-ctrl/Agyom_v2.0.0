@@ -390,6 +390,9 @@
 
 .kpi-more > summary {
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   font-size: 0.8125rem;
   font-weight: 700;
@@ -406,7 +409,7 @@
 
 .kpi-more > summary::after {
   content: '▾';
-  float: right;
+  margin-left: auto;
   opacity: 0.7;
 }
 

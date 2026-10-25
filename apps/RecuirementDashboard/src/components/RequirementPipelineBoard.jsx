@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { get } from '../services/apiClient';
 import { ENDPOINTS } from '../config/api';
 import {
@@ -25,11 +25,22 @@ export default function RequirementPipelineBoard({
   onViewCandidate,
   onAdvanceStage,
 }) {
+  const boardRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [requirement, setRequirement] = useState(requirementProp);
   const [candidates, setCandidates] = useState([]);
   const [summary, setSummary] = useState(null);
+
+  const scrollToColumn = (key) => {
+    const column = boardRef.current?.querySelector(`[data-pipeline-column="${key}"]`);
+    const scroller = column?.closest('.pipeline-columns');
+    if (!column || !scroller) return;
+    const left = column.getBoundingClientRect().left
+      - scroller.getBoundingClientRect().left
+      + scroller.scrollLeft;
+    scroller.scrollTo({ left, behavior: 'smooth' });
+  };
 
   const load = useCallback(() => {
     if (!requirementId) return;
@@ -68,7 +79,7 @@ export default function RequirementPipelineBoard({
   const totalPositions = summary?.numberOfPositions ?? req?.numberOfPositions ?? '—';
 
   return (
-    <div className="pipeline-board">
+    <div className="pipeline-board" ref={boardRef}>
       <div className="pipeline-board-head">
         <div className="pipeline-board-title-row">
           <span className="pipeline-board-badge"><IconClipboardCheck /></span>
@@ -113,14 +124,23 @@ export default function RequirementPipelineBoard({
               const count = grouped[col.key]?.length || 0;
               if (!count && (col.key === 'HOLD' || col.key === 'REJECT')) return null;
               return (
-                <span key={col.key} className="pipeline-chip">
+                <button
+                  key={col.key}
+                  type="button"
+                  className="pipeline-chip"
+                  onClick={() => scrollToColumn(col.key)}
+                >
                   {col.label} <strong>{count}</strong>
-                </span>
+                </button>
               );
             })}
-            <span className="pipeline-chip pipeline-chip--total">
+            <button
+              type="button"
+              className="pipeline-chip pipeline-chip--total"
+              onClick={() => scrollToColumn(PIPELINE_COLUMNS[0].key)}
+            >
               Total <strong>{summary?.totalCandidates ?? candidates.length}</strong>
-            </span>
+            </button>
           </div>
         )}
       </div>
@@ -154,7 +174,11 @@ export default function RequirementPipelineBoard({
           {PIPELINE_COLUMNS.map((col) => {
             const items = grouped[col.key] || [];
             return (
-              <div key={col.key} className={`pipeline-column pipeline-column--${col.key.toLowerCase()}`}>
+              <div
+                key={col.key}
+                data-pipeline-column={col.key}
+                className={`pipeline-column pipeline-column--${col.key.toLowerCase()}`}
+              >
                 <div className="pipeline-column-head">
                   <span>{col.label}</span>
                   <span className="pipeline-column-count">{items.length}</span>

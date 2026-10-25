@@ -119,7 +119,7 @@ const KPI_LIST_MAP = {
   totalRequirements: 'requirements',
   activeRequirements: 'requirements',
   onHoldRequirements: 'requirements',
-  totalPositions: 'requirements',
+  totalPositions: 'totalPositions',
   openPositions: 'openPositions',
   closedPositions: 'closedPositions',
   candidatesInPipeline: 'candidatesInPipeline',
@@ -129,8 +129,8 @@ const KPI_LIST_MAP = {
   candidatesJoined: 'candidatesJoined',
   cancelledRequirements: 'cancelledRequirements',
   requirementsAtRisk: 'requirementsAtRisk',
-  overdueRequirements: 'requirementsAtRisk',
-  wastedSourcing: 'wasted',
+  overdueRequirements: 'overdueRequirements',
+  wastedSourcing: 'wastedSourcing',
   pendingSalesHandoff: 'pendingSalesHandoff',
 };
 
@@ -652,11 +652,30 @@ function matchesKpiRow(query, row, columns, formatCell) {
 }
 
 // Modal listing the rows that make up a clicked KPI.
+const CANDIDATE_NAME_LISTS = new Set([
+  'offersReleased',
+  'offersAccepted',
+  'candidatesJoined',
+]);
+
+function withCandidateName(rows, listKey) {
+  if (!CANDIDATE_NAME_LISTS.has(listKey)) return rows;
+  return rows.map((row) => {
+    if (!row || typeof row !== 'object' || 'candidateName' in row) return row;
+    const candidateName = row.candidate?.name ?? null;
+    if (Object.prototype.hasOwnProperty.call(row, 'publicId')) {
+      const { publicId, ...rest } = row;
+      return { publicId, candidateName, ...rest };
+    }
+    return { candidateName, ...row };
+  });
+}
+
 function KpiModal({ kpi, onClose }) {
   const [search, setSearch] = useState('');
   const key = kpi.label;
   const listKey = kpi.listKey;
-  const items = Array.isArray(kpi.rows) ? kpi.rows : [];
+  const items = withCandidateName(Array.isArray(kpi.rows) ? kpi.rows : [], listKey);
   const sortedItems = items.slice().sort((a, b) => {
     const aValue = Number(a[key]) || 0;
     const bValue = Number(b[key]) || 0;

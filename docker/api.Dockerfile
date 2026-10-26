@@ -11,6 +11,7 @@ FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/scripts ./apps/api/scripts
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/typescript-config ./packages/typescript-config/
@@ -27,6 +28,7 @@ FROM base AS production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
+COPY apps/api/scripts ./apps/api/scripts
 COPY packages/shared-types/package.json ./packages/shared-types/
 COPY packages/shared-utils/package.json ./packages/shared-utils/
 COPY packages/typescript-config ./packages/typescript-config/

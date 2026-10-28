@@ -92,8 +92,24 @@ export class OffersService {
       publicId?: string;
       roleSkill: string;
       client?: { name: string } | null;
+      salesOwner?: { id: string; fullName: string; email?: string } | null;
+      taOwner?: { id: string; fullName: string; email?: string } | null;
+      taAssignments?: Array<{
+        user: { id: string; fullName: string; email?: string };
+      }>;
     };
   }) {
+    const taOwnersList = (record.requirement.taAssignments ?? []).map((a) => ({
+      id: a.user.id,
+      fullName: a.user.fullName,
+      email: a.user.email,
+    }));
+    const taOwners =
+      taOwnersList.length
+        ? taOwnersList
+        : record.requirement.taOwner
+          ? [record.requirement.taOwner]
+          : [];
     return {
       id: record.id,
       publicId: record.publicId,
@@ -132,6 +148,10 @@ export class OffersService {
       source: record.candidate.source,
       stage: record.candidate.stageCode,
       requirementPublicId: record.requirement.publicId ?? null,
+      salesOwner: record.requirement.salesOwner ?? null,
+      taOwners,
+      salesOwnerName: record.requirement.salesOwner?.fullName ?? null,
+      taOwnerNames: taOwners.map((t) => t.fullName).filter(Boolean).join(', ') || null,
     };
   }
 
@@ -156,9 +176,17 @@ export class OffersService {
         client: {
           select: { name: true },
         },
+        salesOwner: { select: { id: true, fullName: true, email: true } },
+        taOwner: { select: { id: true, fullName: true, email: true } },
+        taAssignments: {
+          select: {
+            user: { select: { id: true, fullName: true, email: true } },
+          },
+          orderBy: [{ isPrimary: 'desc' as const }, { assignedAt: 'asc' as const }],
+        },
       },
     },
-  } as const;
+  };
 
   /**
    * Auto-create an INITIATED offer when a candidate is Selected AND LOI allows

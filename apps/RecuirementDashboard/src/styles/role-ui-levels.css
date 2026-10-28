@@ -2561,10 +2561,26 @@
 
 .assign-task .task-card-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--dash-card-border, var(--border));
+}
+
+.assign-task .jd-modal {
+  width: min(720px, 94vw);
+  max-height: 85vh;
+}
+
+.assign-task .jd-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+  font-size: 0.9375rem;
+  color: var(--dash-text-strong, var(--text));
 }
 
 .assign-task .modal-card.pipeline-modal {

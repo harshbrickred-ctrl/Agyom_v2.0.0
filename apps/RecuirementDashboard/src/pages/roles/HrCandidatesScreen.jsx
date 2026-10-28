@@ -77,6 +77,10 @@ function onboardingRow(o, offerStatusOptions = FALLBACK_OFFER_STATUSES) {
     onboardingStatus: o.onboardingStatus || o.statusCode || '—',
     requirementStatus: o.requirementStatus || o.requirement?.status || '—',
     remarks: o.remarks || '—',
+    salesOwner: o.salesOwnerName || o.salesOwner?.fullName || '—',
+    taOwners: o.taOwnerNames
+      || (Array.isArray(o.taOwners) ? o.taOwners.map((t) => t.fullName || t).filter(Boolean).join(', ') : '')
+      || '—',
   };
 }
 
@@ -343,7 +347,9 @@ export default function HrCandidatesScreen() {
           { label: 'Onboarding ID', key: 'publicId' },
           { label: 'Offer ID', key: 'offerPublicId' },
           { label: 'Candidate ID', key: 'candidatePublicId' },
-          { label: 'Candidate', key: 'candidateName' },
+          { label: 'Candidate Name', key: 'candidateName' },
+          { label: 'TA Owners', key: 'taOwners' },
+          { label: 'Sales Owner', key: 'salesOwner' },
           { label: 'Role', key: 'clientRole' },
           { label: 'Req ID', key: 'reqId' },
           { label: 'Email', key: 'email' },
@@ -380,7 +386,9 @@ export default function HrCandidatesScreen() {
               <th>Onboarding ID</th>
               <th>Offer ID</th>
               <th>Candidate ID</th>
-              <th>Candidate</th>
+              <th>Candidate Name</th>
+              <th>TA Owners</th>
+              <th>Sales Owner</th>
               <th>Role</th>
               <th>Req ID</th>
               <th>Email</th>
@@ -407,6 +415,8 @@ export default function HrCandidatesScreen() {
                   <td>{row.offerPublicId}</td>
                   <td>{row.candidatePublicId}</td>
                   <td>{row.candidateName}</td>
+                  <td>{row.taOwners}</td>
+                  <td>{row.salesOwner}</td>
                   <td>{row.clientRole}</td>
                   <td>{row.reqId}</td>
                   <td>{row.email}</td>

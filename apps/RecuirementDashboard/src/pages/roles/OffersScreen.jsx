@@ -61,6 +61,10 @@ function offerRow(o, statusOptions) {
     offerReleasedDate: formatDate(o.offerReleasedDate),
     expectedDoj: formatDate(o.expectedDoj),
     remarks: o.remarks || '—',
+    salesOwner: o.salesOwnerName || o.salesOwner?.fullName || '—',
+    taOwners: o.taOwnerNames
+      || (Array.isArray(o.taOwners) ? o.taOwners.map((t) => t.fullName || t).filter(Boolean).join(', ') : '')
+      || '—',
   };
 }
 
@@ -306,7 +310,9 @@ export default function OffersScreen() {
         columns={[
           { label: 'Offer ID', key: 'publicId' },
           { label: 'Candidate ID', key: 'candidatePublicId' },
-          { label: 'Candidate', key: 'candidateName' },
+          { label: 'Candidate Name', key: 'candidateName' },
+          { label: 'TA Owners', key: 'taOwners' },
+          { label: 'Sales Owner', key: 'salesOwner' },
           { label: 'Position', key: 'position' },
           { label: 'Client', key: 'client' },
           { label: 'Email', key: 'email' },
@@ -339,7 +345,9 @@ export default function OffersScreen() {
             <tr>
               <th>Offer ID</th>
               <th>Candidate ID</th>
-              <th>Candidate</th>
+              <th>Candidate Name</th>
+              <th>TA Owners</th>
+              <th>Sales Owner</th>
               <th>Position</th>
               <th>Client</th>
               <th>Email</th>
@@ -361,6 +369,8 @@ export default function OffersScreen() {
                   <td>{row.publicId}</td>
                   <td>{row.candidatePublicId}</td>
                   <td>{row.candidateName}</td>
+                  <td>{row.taOwners}</td>
+                  <td>{row.salesOwner}</td>
                   <td>{row.position}</td>
                   <td>{row.client}</td>
                   <td>{row.email}</td>

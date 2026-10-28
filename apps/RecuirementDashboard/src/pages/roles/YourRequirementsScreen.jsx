@@ -618,7 +618,7 @@ export default function YourRequirementsScreen() {
             { label: 'Job Location', value: (r) => r.jobLocation || '—' },
             { label: 'Sales Owner', value: (r) => r.salesOwner?.fullName || '—' },
             { label: 'TA Lead', value: (r) => formatTaLeadNames(r) },
-            { label: 'TA Owner', value: (r) => formatTaOwnerNames(r) },
+            { label: 'TA Owners', value: (r) => formatTaOwnerNames(r) },
             { label: 'Status', value: (r) => r.status || 'ACTIVE' },
             { label: 'Added', value: (r) => formatDate(r.createdAt) },
           ]}
@@ -671,7 +671,7 @@ export default function YourRequirementsScreen() {
                 <th>Job Location</th>
                 <th>Sales Owner</th>
                 <th>TA Lead</th>
-                <th>TA Owner</th>
+                <th>TA Owners</th>
                 <th>Status</th>
                 <th>Added</th>
                 <th>Action</th>

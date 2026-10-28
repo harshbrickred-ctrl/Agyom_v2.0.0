@@ -203,6 +203,24 @@ export class DashboardQueryDto {
   @Transform(({ value }) => (value === '' || value == null ? undefined : value))
   @IsDateString()
   to?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional inclusive profile-submitted date lower bound (YYYY-MM-DD). Uses createdAt when profileSubmittedDate is null.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value === '' || value == null ? undefined : value))
+  @IsDateString()
+  profileSubmittedFrom?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional inclusive profile-submitted date upper bound (YYYY-MM-DD). Uses createdAt when profileSubmittedDate is null.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value === '' || value == null ? undefined : value))
+  @IsDateString()
+  profileSubmittedTo?: string;
 }
 
 export class AuditQueryDto {

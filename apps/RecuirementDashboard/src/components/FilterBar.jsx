@@ -20,6 +20,13 @@ function resolveLabel(list, value) {
   return typeof found === 'string' ? found : found.label;
 }
 
+const EMPTY_DATES = [
+  ['fromDate', ''],
+  ['toDate', ''],
+  ['profileSubmittedFrom', ''],
+  ['profileSubmittedTo', ''],
+];
+
 export default function FilterBar({ rows, filters, onChange, options = {} }) {
   const fields = [
     { key: 'taOwner', label: 'TA Owner', Icon: IconUser },
@@ -32,11 +39,14 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
   const handle = (key, value) => onChange({ ...filters, [key]: value });
 
   const clearAll = () =>
-    onChange(Object.fromEntries(fields.map((f) => [f.key, 'All']).concat([['fromDate', ''], ['toDate', '']])));
+    onChange(Object.fromEntries(fields.map((f) => [f.key, 'All']).concat(EMPTY_DATES)));
 
   const activeCount =
     fields.filter((f) => filters[f.key] !== 'All').length +
-    (filters.fromDate ? 1 : 0) + (filters.toDate ? 1 : 0);
+    (filters.fromDate ? 1 : 0) +
+    (filters.toDate ? 1 : 0) +
+    (filters.profileSubmittedFrom ? 1 : 0) +
+    (filters.profileSubmittedTo ? 1 : 0);
 
   const chips = [
     ...fields
@@ -47,10 +57,24 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
         reset: () => handle(f.key, 'All'),
       })),
     filters.fromDate
-      ? { key: 'fromDate', label: `From ${filters.fromDate}`, reset: () => handle('fromDate', '') }
+      ? { key: 'fromDate', label: `Requirement from ${filters.fromDate}`, reset: () => handle('fromDate', '') }
       : null,
     filters.toDate
-      ? { key: 'toDate', label: `To ${filters.toDate}`, reset: () => handle('toDate', '') }
+      ? { key: 'toDate', label: `Requirement to ${filters.toDate}`, reset: () => handle('toDate', '') }
+      : null,
+    filters.profileSubmittedFrom
+      ? {
+          key: 'profileSubmittedFrom',
+          label: `Profile from ${filters.profileSubmittedFrom}`,
+          reset: () => handle('profileSubmittedFrom', ''),
+        }
+      : null,
+    filters.profileSubmittedTo
+      ? {
+          key: 'profileSubmittedTo',
+          label: `Profile to ${filters.profileSubmittedTo}`,
+          reset: () => handle('profileSubmittedTo', ''),
+        }
       : null,
   ].filter(Boolean);
 
@@ -61,7 +85,7 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
         <span>Filters</span>
         <InfoTip
           inline
-          text="Narrows every metric, chart, and owner table on this page by TA owner, sales owner, client, job family, priority, and requirement date."
+          text="Narrows every metric, chart, and owner table by TA owner, sales owner, client, job family, priority, requirement date, and profile submitted date. Requirement date scopes which requirements are included. Profile submitted scopes candidate pipeline metrics; when set, requirement metrics also require at least one matching submission."
         />
         {activeCount > 0 && <span className="filter-count">{activeCount} active</span>}
         {activeCount > 0 && (
@@ -114,21 +138,43 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
         <div className="filter-field filter-date-range">
           <span className="filter-label">
             <IconCalendar />
-            Date range
+            Requirement Date
           </span>
           <div className="filter-date-pair">
             <input
               type="date"
               value={filters.fromDate || ''}
               onChange={(e) => handle('fromDate', e.target.value)}
-              aria-label="From date"
+              aria-label="Requirement date from"
             />
             <span className="filter-date-sep" aria-hidden="true">–</span>
             <input
               type="date"
               value={filters.toDate || ''}
               onChange={(e) => handle('toDate', e.target.value)}
-              aria-label="To date"
+              aria-label="Requirement date to"
+            />
+          </div>
+        </div>
+
+        <div className="filter-field filter-date-range">
+          <span className="filter-label">
+            <IconCalendar />
+            Profile Submitted
+          </span>
+          <div className="filter-date-pair">
+            <input
+              type="date"
+              value={filters.profileSubmittedFrom || ''}
+              onChange={(e) => handle('profileSubmittedFrom', e.target.value)}
+              aria-label="Profile submitted from"
+            />
+            <span className="filter-date-sep" aria-hidden="true">–</span>
+            <input
+              type="date"
+              value={filters.profileSubmittedTo || ''}
+              onChange={(e) => handle('profileSubmittedTo', e.target.value)}
+              aria-label="Profile submitted to"
             />
           </div>
         </div>

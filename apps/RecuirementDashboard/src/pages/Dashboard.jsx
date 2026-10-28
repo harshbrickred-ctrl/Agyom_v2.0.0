@@ -264,6 +264,8 @@ export default function Dashboard() {
     priority: 'All',
     fromDate: '',
     toDate: '',
+    profileSubmittedFrom: '',
+    profileSubmittedTo: '',
   });
   const [modalKpi, setModalKpi] = useState(null); // { label, rows }
   const [openPositionsOnClient, setOpenPositionsOnClient] = useState(null);
@@ -291,6 +293,8 @@ export default function Dashboard() {
     if (filters.priority !== 'All') payload.priorityCode = filters.priority;
     if (filters.fromDate) payload.from = filters.fromDate;
     if (filters.toDate) payload.to = filters.toDate;
+    if (filters.profileSubmittedFrom) payload.profileSubmittedFrom = filters.profileSubmittedFrom;
+    if (filters.profileSubmittedTo) payload.profileSubmittedTo = filters.profileSubmittedTo;
 
     post(ENDPOINTS.DASHBOARD, payload)
       .then((res) => {
@@ -652,22 +656,50 @@ function matchesKpiRow(query, row, columns, formatCell) {
 }
 
 // Modal listing the rows that make up a clicked KPI.
-const CANDIDATE_NAME_LISTS = new Set([
+const CANDIDATE_LIST_KEYS = new Set([
+  'candidatesInPipeline',
+  'selectedCandidates',
   'offersReleased',
   'offersAccepted',
   'candidatesJoined',
+  'closedPositions',
 ]);
 
-function withCandidateName(rows, listKey) {
-  if (!CANDIDATE_NAME_LISTS.has(listKey)) return rows;
+const KPI_COLUMN_LABELS = {
+  candidateName: 'Candidate Name',
+  taOwners: 'TA Owners',
+  salesOwner: 'Sales Owner',
+  profileSubmittedDate: 'Profile Submitted',
+  publicId: 'Public Id',
+};
+
+const KPI_COLUMN_PRIORITY = [
+  'publicId',
+  'candidateName',
+  'name',
+  'taOwners',
+  'salesOwner',
+  'profileSubmittedDate',
+  'client',
+  'roleSkill',
+  'status',
+  'statusCode',
+];
+
+function enrichKpiRows(rows, listKey) {
+  if (!CANDIDATE_LIST_KEYS.has(listKey)) return rows;
   return rows.map((row) => {
-    if (!row || typeof row !== 'object' || 'candidateName' in row) return row;
-    const candidateName = row.candidate?.name ?? null;
-    if (Object.prototype.hasOwnProperty.call(row, 'publicId')) {
-      const { publicId, ...rest } = row;
-      return { publicId, candidateName, ...rest };
+    if (!row || typeof row !== 'object') return row;
+    const candidateName = row.candidateName
+      ?? row.candidate?.name
+      ?? row.name
+      ?? null;
+    const next = { ...row, candidateName };
+    if (Object.prototype.hasOwnProperty.call(next, 'publicId')) {
+      const { publicId, candidateName: name, ...rest } = next;
+      return { publicId, candidateName: name, ...rest };
     }
-    return { candidateName, ...row };
+    return next;
   });
 }
 
@@ -675,7 +707,7 @@ function KpiModal({ kpi, onClose }) {
   const [search, setSearch] = useState('');
   const key = kpi.label;
   const listKey = kpi.listKey;
-  const items = withCandidateName(Array.isArray(kpi.rows) ? kpi.rows : [], listKey);
+  const items = enrichKpiRows(Array.isArray(kpi.rows) ? kpi.rows : [], listKey);
   const sortedItems = items.slice().sort((a, b) => {
     const aValue = Number(a[key]) || 0;
     const bValue = Number(b[key]) || 0;
@@ -699,14 +731,31 @@ function KpiModal({ kpi, onClose }) {
     'hrOwnerId',
     'mobileNormalized',
     'emailNormalized',
+    'taOwner',
   ]);
+  const hasCandidateName = sortedItems.some((row) => row?.candidateName != null && row.candidateName !== '');
+  if (hasCandidateName) HIDDEN_KEYS.add('candidate');
+  if (sortedItems.some((row) => row?.candidateName != null || row?.name != null)) {
+    if (hasCandidateName) HIDDEN_KEYS.add('name');
+  }
 
   const columns = listKey
     ? Array.from(new Set(sortedItems.flatMap((row) => Object.keys(row))))
       .filter((colKey) => !HIDDEN_KEYS.has(colKey))
-      .map((colKey) => ({ key: colKey, label: formatHeader(colKey) }))
+      .sort((a, b) => {
+        const ai = KPI_COLUMN_PRIORITY.indexOf(a);
+        const bi = KPI_COLUMN_PRIORITY.indexOf(b);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      })
+      .map((colKey) => ({
+        key: colKey,
+        label: KPI_COLUMN_LABELS[colKey] || formatHeader(colKey),
+      }))
     : DASHBOARD_COLUMNS.filter((c) => [
-      'taOwner', 'salesOwner', 'priority', 'client', 'jobFamily',
+      'taOwners', 'salesOwner', 'priority', 'client', 'jobFamily',
       'totalRequirements', 'totalPositions', 'openPositions', 'closedPositions',
       'pendingSalesHandoff', 'candidatesInPipeline', 'selectedCandidates',
       'offersReleased', 'offersAccepted', 'candidatesJoined', 'offersRejected',

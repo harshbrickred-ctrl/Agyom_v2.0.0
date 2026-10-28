@@ -2,7 +2,7 @@
 // Every screen reuses these so adding/removing a column is a one-line change.
 
 export const DASHBOARD_COLUMNS = [
-  { key: 'taOwner', label: 'TA Owner' },
+  { key: 'taOwners', label: 'TA Owners' },
   { key: 'salesOwner', label: 'Sales Owner' },
   { key: 'priority', label: 'Priority' },
   { key: 'client', label: 'Client' },

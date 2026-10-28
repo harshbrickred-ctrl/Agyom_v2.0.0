@@ -95,15 +95,36 @@ export class OnboardingService {
         publicId: true,
         roleSkill: true,
         status: true,
+        salesOwner: { select: { id: true, fullName: true, email: true } },
+        taOwner: { select: { id: true, fullName: true, email: true } },
+        taAssignments: {
+          select: {
+            user: { select: { id: true, fullName: true, email: true } },
+          },
+          orderBy: [{ isPrimary: 'desc' as const }, { assignedAt: 'asc' as const }],
+        },
       },
     },
-  } as const;
+  };
 
   private mapOnboardingRow(row: any): any {
     const offerInitiatedDate = row.offer?.offerInitiatedDate ?? null;
     const offerReleasedDate = row.offer?.offerReleasedDate ?? null;
     const offerStatus = row.offer?.statusCode ?? null;
     const ctcRate = row.offer?.ctcRate ?? null;
+    const taOwnersList = (row.requirement?.taAssignments ?? []).map(
+      (a: { user: { id: string; fullName: string; email?: string } }) => ({
+        id: a.user.id,
+        fullName: a.user.fullName,
+        email: a.user.email,
+      }),
+    );
+    const taOwners =
+      taOwnersList.length
+        ? taOwnersList
+        : row.requirement?.taOwner
+          ? [row.requirement.taOwner]
+          : [];
 
     return {
       ...row,
@@ -135,6 +156,10 @@ export class OnboardingService {
       onboardingStatus: row.statusCode,
       requirementStatus: row.requirement?.status ?? null,
       remarks: row.remarks,
+      salesOwner: row.requirement?.salesOwner ?? null,
+      taOwners,
+      salesOwnerName: row.requirement?.salesOwner?.fullName ?? null,
+      taOwnerNames: taOwners.map((t: { fullName: string }) => t.fullName).filter(Boolean).join(', ') || null,
     };
   }
 

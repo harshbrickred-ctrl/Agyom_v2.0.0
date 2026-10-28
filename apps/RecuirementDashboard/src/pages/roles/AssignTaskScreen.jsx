@@ -174,6 +174,7 @@ export default function AssignTaskScreen() {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showSourcing, setShowSourcing] = useState(false);
+  const [showJd, setShowJd] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [editing, setEditing] = useState(null); // candidate being edited
   const [viewingCandidate, setViewingCandidate] = useState(null);
@@ -678,13 +679,18 @@ export default function AssignTaskScreen() {
     setSelectedTaskId(task.id);
     setShowSourcing(true);
   };
+  const openTaskJd = (task) => {
+    setSelectedTaskId(task.id);
+    setShowJd(true);
+  };
   useEscapeKey(Boolean(viewingCandidate), closeCandidateDetails);
   useEscapeKey(Boolean(showForm) && !viewingCandidate, () => {
     if (!parsingResume) closeForm();
   });
   useEscapeKey(Boolean(showSourcing) && !viewingCandidate && !showForm, () => setShowSourcing(false));
+  useEscapeKey(Boolean(showJd) && !viewingCandidate && !showForm && !showSourcing, () => setShowJd(false));
   useEscapeKey(
-    Boolean(showDetail) && !showForm && !viewingCandidate && !showSourcing,
+    Boolean(showDetail) && !showForm && !viewingCandidate && !showSourcing && !showJd,
     closeDetail,
   );
 
@@ -1076,6 +1082,13 @@ export default function AssignTaskScreen() {
           <button
             type="button"
             className="cand-edit"
+            onClick={() => openTaskJd(t)}
+          >
+            Job Description
+          </button>
+          <button
+            type="button"
+            className="cand-edit"
             onClick={() => openTaskSourcing(t)}
           >
             Source
@@ -1091,7 +1104,7 @@ export default function AssignTaskScreen() {
         <span className="assign-badge"><IconClipboardCheck /></span>
         <div>
           <h2 className="assign-title">Assign Task</h2>
-          <p className="assign-sub">Click a card to manage the pipeline. Source candidates from the card.</p>
+          <p className="assign-sub">Click a card to manage the pipeline. Open Job Description or Source from the card.</p>
         </div>
         {tasks.length > 0 && <span className="yr-count">{visibleTasks.length}</span>}
       </div>
@@ -1263,10 +1276,14 @@ export default function AssignTaskScreen() {
               <DownloadExcelButton
                 filename="candidates"
                 rows={displayedCandidates}
-                columns={CANDIDATE_FIELDS.map((field) => ({
-                  label: field.label,
-                  value: (candidate) => candidateExportValue(candidate, field, candidateStages, interviewRounds),
-                }))}
+                columns={[
+                  ...CANDIDATE_FIELDS.map((field) => ({
+                    label: field.label,
+                    value: (candidate) => candidateExportValue(candidate, field, candidateStages, interviewRounds),
+                  })),
+                  { label: 'TA Owners', value: () => formatTaOwnerNames(selectedTask) },
+                  { label: 'Sales Owner', value: () => selectedTask.salesOwner || '—' },
+                ]}
               />
               {selectedTask.candidates.length === 0 ? (
                 <EmptyState
@@ -1286,8 +1303,10 @@ export default function AssignTaskScreen() {
                   <thead>
                     <tr>
                       {CANDIDATE_FIELDS.map((f) => (
-                        <th key={f.key}>{f.label}</th>
+                        <th key={f.key}>{f.key === 'candidateName' ? 'Candidate Name' : f.label}</th>
                       ))}
+                      <th>TA Owners</th>
+                      <th>Sales Owner</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -1330,6 +1349,8 @@ export default function AssignTaskScreen() {
                             <td key={f.key}>{display}</td>
                           );
                         })}
+                        <td>{formatTaOwnerNames(selectedTask)}</td>
+                        <td>{selectedTask.salesOwner || '—'}</td>
                         <td>
                           {!recruitingBlocked && (
                             <button className="cand-edit" onClick={(e) => { e.stopPropagation(); openEdit(c); }} title="Edit">
@@ -1389,6 +1410,39 @@ export default function AssignTaskScreen() {
                 </div>
               )}
               </section>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showJd && selectedTask && (
+        <div className="modal-overlay" onClick={() => setShowJd(false)}>
+          <div className="modal-card detail-modal jd-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="pipeline-modal-heading">
+                <h3>
+                  Job Description
+                  <span className="kpi-modal-count">{selectedTask.publicId || selectedTask.id}</span>
+                </h3>
+                <p className="pipeline-modal-sub">
+                  {selectedTask.clientName} — {selectedTask.position}
+                </p>
+              </div>
+              <button className="modal-close" onClick={() => setShowJd(false)} title="Close">
+                <IconX />
+              </button>
+            </div>
+            <div className="modal-body">
+              {selectedTask.remarks?.trim() ? (
+                <div className="jd-body">{selectedTask.remarks}</div>
+              ) : (
+                <div className="progress-empty">No job description was added for this requirement.</div>
+              )}
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="filter-clear" onClick={() => setShowJd(false)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

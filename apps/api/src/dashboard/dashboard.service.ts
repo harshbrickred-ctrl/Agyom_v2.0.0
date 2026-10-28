@@ -39,7 +39,23 @@ export class DashboardService {
     };
   }
 
-  private requirementWhere(
+  private dayStart(iso: string): Date {
+    const date = new Date(iso);
+    date.setUTCHours(0, 0, 0, 0);
+    return date;
+  }
+
+  private dayEnd(iso: string): Date {
+    const date = new Date(iso);
+    date.setUTCHours(23, 59, 59, 999);
+    return date;
+  }
+
+  /**
+   * Requirement dimension filters, including optional requirement date (from/to).
+   * Does not apply profile-submitted bounds.
+   */
+  private requirementDimensions(
     query: DashboardQueryDto,
   ): Prisma.RequirementWhereInput {
     return {
@@ -54,11 +70,91 @@ export class DashboardService {
       ...(query.from || query.to
         ? {
             requirementDate: {
-              ...(query.from ? { gte: new Date(query.from) } : {}),
-              ...(query.to ? { lte: new Date(query.to) } : {}),
+              ...(query.from ? { gte: this.dayStart(query.from) } : {}),
+              ...(query.to ? { lte: this.dayEnd(query.to) } : {}),
             },
           }
         : {}),
+    };
+  }
+
+  /** Profile submitted window; falls back to createdAt when profileSubmittedDate is null. */
+  private profileSubmittedFilter(
+    query: DashboardQueryDto,
+  ): Prisma.CandidateWhereInput | undefined {
+    if (!query.profileSubmittedFrom && !query.profileSubmittedTo) return undefined;
+    const profileRange: Prisma.DateTimeFilter = {
+      ...(query.profileSubmittedFrom
+        ? { gte: this.dayStart(query.profileSubmittedFrom) }
+        : {}),
+      ...(query.profileSubmittedTo
+        ? { lte: this.dayEnd(query.profileSubmittedTo) }
+        : {}),
+    };
+    const createdRange: Prisma.DateTimeFilter = {
+      ...(query.profileSubmittedFrom
+        ? { gte: this.dayStart(query.profileSubmittedFrom) }
+        : {}),
+      ...(query.profileSubmittedTo
+        ? { lte: this.dayEnd(query.profileSubmittedTo) }
+        : {}),
+    };
+    return {
+      OR: [
+        { profileSubmittedDate: profileRange },
+        {
+          AND: [
+            { profileSubmittedDate: null },
+            { createdAt: createdRange },
+          ],
+        },
+      ],
+    };
+  }
+
+  /**
+   * Requirements in scope. Requirement date uses from/to.
+   * When profileSubmittedFrom/To are set, only requirements that have at least
+   * one candidate whose profile was submitted in that window.
+   */
+  private requirementWhere(
+    query: DashboardQueryDto,
+  ): Prisma.RequirementWhereInput {
+    const profileFilter = this.profileSubmittedFilter(query);
+    return {
+      ...this.requirementDimensions(query),
+      ...(profileFilter
+        ? { candidates: { some: { deletedAt: null, ...profileFilter } } }
+        : {}),
+    };
+  }
+
+  /** Candidates in scope for pipeline / selected / sourced metrics. */
+  private candidateWhere(
+    query: DashboardQueryDto,
+  ): Prisma.CandidateWhereInput {
+    const profileFilter = this.profileSubmittedFilter(query);
+    return {
+      deletedAt: null,
+      requirement: this.requirementDimensions(query),
+      ...(profileFilter ?? {}),
+    };
+  }
+
+  private ownerFieldsFromRequirement(requirement: {
+    taOwners?: Array<{ id: string; fullName: string; email?: string }>;
+    taOwner?: { id: string; fullName: string; email?: string } | null;
+    salesOwner?: { id: string; fullName: string; email?: string } | null;
+  } | null | undefined) {
+    const taOwners =
+      requirement?.taOwners?.length
+        ? requirement.taOwners
+        : requirement?.taOwner
+          ? [requirement.taOwner]
+          : [];
+    return {
+      taOwners,
+      salesOwner: requirement?.salesOwner ?? null,
     };
   }
 
@@ -108,6 +204,13 @@ export class DashboardService {
       };
     }
 
+    const candidateScope = this.candidateWhere(query);
+    const profileFilter = this.profileSubmittedFilter(query);
+    const offerCandidateScope: Prisma.CandidateWhereInput = {
+      deletedAt: null,
+      ...(profileFilter ?? {}),
+    };
+
     const [
       candidatesInPipeline,
       selectedCandidates,
@@ -120,16 +223,14 @@ export class DashboardService {
     ] = await Promise.all([
       this.prisma.candidate.count({
         where: {
-          deletedAt: null,
+          ...candidateScope,
           selected: false,
-          requirementId: { in: reqIds },
         },
       }),
       this.prisma.candidate.count({
         where: {
-          deletedAt: null,
+          ...candidateScope,
           selected: true,
-          requirementId: { in: reqIds },
           NOT: {
             OR: [
               { onboarding: { statusCode: 'JOINED', deletedAt: null } },
@@ -148,6 +249,7 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'RELEASED',
           requirementId: { in: reqIds },
+          candidate: offerCandidateScope,
         },
       }),
       this.prisma.offer.count({
@@ -155,6 +257,7 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'ACCEPTED',
           requirementId: { in: reqIds },
+          candidate: offerCandidateScope,
           NOT: {
             onboarding: { statusCode: 'JOINED', deletedAt: null },
           },
@@ -165,14 +268,12 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'DECLINED',
           requirementId: { in: reqIds },
+          candidate: offerCandidateScope,
         },
       }),
       this.prisma.candidate.groupBy({
         by: ['mobileNormalized'],
-        where: {
-          deletedAt: null,
-          requirementId: { in: reqIds },
-        },
+        where: candidateScope,
         _count: { _all: true },
       }),
       this.prisma.onboarding.findMany({
@@ -180,12 +281,13 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'JOINED',
           requirementId: { in: reqIds },
+          candidate: offerCandidateScope,
         },
         select: { requirementId: true, actualDoj: true },
       }),
       this.prisma.candidate.groupBy({
         by: ['requirementId'],
-        where: { deletedAt: null, requirementId: { in: reqIds } },
+        where: candidateScope,
         _count: { _all: true },
       }),
     ]);
@@ -293,6 +395,31 @@ export class DashboardService {
   }
 
   async lists(query: DashboardQueryDto): Promise<Record<string, unknown>> {
+    const ownerUserSelect = {
+      id: true,
+      fullName: true,
+      email: true,
+    };
+
+    const requirementOwnerSelect = {
+      id: true,
+      publicId: true,
+      roleSkill: true,
+      client: { select: { id: true, name: true } },
+      salesOwner: { select: ownerUserSelect },
+      taOwner: { select: ownerUserSelect },
+      taAssignments: {
+        select: {
+          isPrimary: true,
+          user: { select: ownerUserSelect },
+        },
+        orderBy: [
+          { isPrimary: 'desc' as const },
+          { assignedAt: 'asc' as const },
+        ],
+      },
+    };
+
     const candidateSelect = {
       id: true,
       publicId: true,
@@ -302,16 +429,10 @@ export class DashboardService {
       mobileNormalized: true,
       stageCode: true,
       selected: true,
+      profileSubmittedDate: true,
       requirementId: true,
-      requirement: {
-        select: {
-          id: true,
-          publicId: true,
-          roleSkill: true,
-          client: { select: { id: true, name: true } },
-        },
-      },
-    } as const;
+      requirement: { select: requirementOwnerSelect },
+    };
 
     const offerSelect = {
       id: true,
@@ -323,17 +444,16 @@ export class DashboardService {
       candidateId: true,
       requirementId: true,
       candidate: {
-        select: { id: true, publicId: true, name: true, email: true },
-      },
-      requirement: {
         select: {
           id: true,
           publicId: true,
-          roleSkill: true,
-          client: { select: { id: true, name: true } },
+          name: true,
+          email: true,
+          profileSubmittedDate: true,
         },
       },
-    } as const;
+      requirement: { select: requirementOwnerSelect },
+    };
 
     const requirementSelect = {
       id: true,
@@ -408,18 +528,16 @@ export class DashboardService {
       }),
       this.prisma.candidate.findMany({
         where: {
-          deletedAt: null,
+          ...this.candidateWhere(query),
           selected: false,
-          requirement: this.requirementWhere(query),
         },
         select: candidateSelect,
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.candidate.findMany({
         where: {
-          deletedAt: null,
+          ...this.candidateWhere(query),
           selected: true,
-          requirement: this.requirementWhere(query),
           NOT: {
             OR: [
               { onboarding: { statusCode: 'JOINED', deletedAt: null } },
@@ -440,6 +558,10 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'RELEASED',
           requirement: this.requirementWhere(query),
+          candidate: {
+            deletedAt: null,
+            ...(this.profileSubmittedFilter(query) ?? {}),
+          },
         },
         select: offerSelect,
         orderBy: { createdAt: 'desc' },
@@ -449,6 +571,10 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'ACCEPTED',
           requirement: this.requirementWhere(query),
+          candidate: {
+            deletedAt: null,
+            ...(this.profileSubmittedFilter(query) ?? {}),
+          },
           NOT: {
             onboarding: { statusCode: 'JOINED', deletedAt: null },
           },
@@ -461,6 +587,10 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'DECLINED',
           requirement: this.requirementWhere(query),
+          candidate: {
+            deletedAt: null,
+            ...(this.profileSubmittedFilter(query) ?? {}),
+          },
         },
         select: offerSelect,
         orderBy: { createdAt: 'desc' },
@@ -470,6 +600,10 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'JOINED',
           requirement: this.requirementWhere(query),
+          candidate: {
+            deletedAt: null,
+            ...(this.profileSubmittedFilter(query) ?? {}),
+          },
         },
         select: {
           id: true,
@@ -478,25 +612,21 @@ export class DashboardService {
           actualDoj: true,
           expectedDoj: true,
           candidate: {
-            select: { id: true, publicId: true, name: true, email: true },
-          },
-          requirement: {
             select: {
               id: true,
               publicId: true,
-              roleSkill: true,
-              client: { select: { id: true, name: true } },
+              name: true,
+              email: true,
+              profileSubmittedDate: true,
             },
           },
+          requirement: { select: requirementOwnerSelect },
           offer: { select: { id: true, publicId: true, statusCode: true } },
         },
         orderBy: { actualDoj: 'desc' },
       }),
       this.prisma.candidate.findMany({
-        where: {
-          deletedAt: null,
-          requirement: this.requirementWhere(query),
-        },
+        where: this.candidateWhere(query),
         select: {
           id: true,
           publicId: true,
@@ -510,7 +640,7 @@ export class DashboardService {
       }),
     ]);
 
-    const requirements = (rawRequirements as any[]).map((r) => {
+    const mapRequirementOwners = (r: any) => {
       const taOwnersList = (r.taAssignments ?? []).map(
         (a: { user: { id: string; fullName: string; email: string } }) => ({
           id: a.user.id,
@@ -536,7 +666,27 @@ export class DashboardService {
         taOwner: primary,
         taOwnerId: primary?.id ?? null,
       };
-    });
+    };
+
+    const attachListOwners = <T extends Record<string, any>>(row: T) => {
+      const requirement = row.requirement
+        ? mapRequirementOwners(row.requirement)
+        : null;
+      const owners = this.ownerFieldsFromRequirement(requirement);
+      return {
+        ...row,
+        requirement,
+        candidateName: row.candidateName ?? row.candidate?.name ?? row.name ?? null,
+        profileSubmittedDate:
+          row.profileSubmittedDate
+          ?? row.candidate?.profileSubmittedDate
+          ?? null,
+        taOwners: owners.taOwners,
+        salesOwner: owners.salesOwner,
+      };
+    };
+
+    const requirements = (rawRequirements as any[]).map(mapRequirementOwners);
 
     const reqIds = requirements.map((r) => r.id);
     const mobileCounts = new Map<string, number>();
@@ -693,12 +843,17 @@ export class DashboardService {
         requirement && joined.actualDoj
           ? daysBetween(requirement.requirementDate, joined.actualDoj)
           : null;
+      const owners = this.ownerFieldsFromRequirement(requirement);
       return {
         ...joined,
         daysToFill: daysToFill != null && daysToFill >= 0 ? daysToFill : null,
         requirementDate: requirement?.requirementDate ?? null,
-        client: joined.requirement?.client ?? null,
-        roleSkill: joined.requirement?.roleSkill ?? null,
+        client: joined.requirement?.client ?? requirement?.client ?? null,
+        roleSkill: joined.requirement?.roleSkill ?? requirement?.roleSkill ?? null,
+        candidateName: joined.candidate?.name ?? null,
+        profileSubmittedDate: joined.candidate?.profileSubmittedDate ?? null,
+        taOwners: owners.taOwners,
+        salesOwner: owners.salesOwner ?? requirement?.salesOwner ?? null,
       };
     });
 
@@ -721,12 +876,12 @@ export class DashboardService {
       fillRate,
       averageDaysToFill,
       pendingSalesHandoff,
-      candidatesInPipeline,
-      selectedCandidates,
-      offersReleased,
-      offersAccepted,
-      offersRejected,
-      candidatesJoined,
+      candidatesInPipeline: candidatesInPipeline.map(attachListOwners),
+      selectedCandidates: selectedCandidates.map(attachListOwners),
+      offersReleased: offersReleased.map(attachListOwners),
+      offersAccepted: offersAccepted.map(attachListOwners),
+      offersRejected: offersRejected.map(attachListOwners),
+      candidatesJoined: candidatesJoined.map(attachListOwners),
       cancelledRequirements,
       requirementsAtRisk,
       overdueRequirements,
@@ -745,7 +900,7 @@ export class DashboardService {
       reqIds.length
         ? this.prisma.candidate.groupBy({
             by: ['stageCode'],
-            where: { deletedAt: null, requirementId: { in: reqIds } },
+            where: this.candidateWhere(query),
             _count: { _all: true },
           })
         : [],
@@ -1026,11 +1181,15 @@ export class DashboardService {
 
     const counted = requirements.filter((requirement) => requirement.status !== 'CANCELLED');
     const ids = counted.map((requirement) => requirement.id);
+    const profileFilter = this.profileSubmittedFilter(query);
     const [candidateGroups, joinedGroups, salesUsers, taUsers] = await Promise.all([
       ids.length
         ? this.prisma.candidate.groupBy({
             by: ['requirementId', 'selected'],
-            where: { deletedAt: null, requirementId: { in: ids } },
+            where: {
+              ...this.candidateWhere(query),
+              requirementId: { in: ids },
+            },
             _count: { _all: true },
           })
         : [],
@@ -1041,6 +1200,9 @@ export class DashboardService {
               deletedAt: null,
               statusCode: 'JOINED',
               requirementId: { in: ids },
+              ...(profileFilter
+                ? { candidate: { deletedAt: null, ...profileFilter } }
+                : {}),
             },
             _count: { _all: true },
           })

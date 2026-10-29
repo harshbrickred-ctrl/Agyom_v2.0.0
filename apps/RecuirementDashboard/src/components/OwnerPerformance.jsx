@@ -116,6 +116,16 @@ export default function OwnerPerformance({ data }) {
       <div className="chart-card">
         <InfoTip text="Every active sales owner. Positions raised are seats on requirements they own that are not Cancelled. Candidates sourced are all candidates on those requirements. Selected are candidates marked selected." />
         <h3><IconBar /> Sales Owner: Positions Raised vs Candidates Sourced vs Selected</h3>
+        <DownloadExcelButton
+          filename="sales-owner-performance"
+          rows={sales}
+          columns={[
+            { label: 'Sales Owner', key: 'name' },
+            { label: 'Positions Raised', key: 'positionsRaised' },
+            { label: 'Candidates Sourced', key: 'candidatesSourced' },
+            { label: 'Selected', key: 'selectedCandidates' },
+          ]}
+        />
         <OwnerComparisonChart
           rows={sales}
           positionKey="positionsRaised"
@@ -127,6 +137,16 @@ export default function OwnerPerformance({ data }) {
       <div className="chart-card">
         <InfoTip text="Every active TA owner, counted on the primary TA for each requirement. Positions assigned, candidates sourced, and selected follow the sales chart, and Cancelled requirements are excluded." />
         <h3><IconUsers /> TA Owner: Positions Assigned vs Candidates Sourced vs Selected</h3>
+        <DownloadExcelButton
+          filename="ta-owner-chart"
+          rows={ta}
+          columns={[
+            { label: 'TA Owner', key: 'name' },
+            { label: 'Positions Assigned', key: 'positionsAssigned' },
+            { label: 'Candidates Sourced', key: 'candidatesSourced' },
+            { label: 'Selected', key: 'selectedCandidates' },
+          ]}
+        />
         <OwnerComparisonChart
           rows={ta}
           positionKey="positionsAssigned"

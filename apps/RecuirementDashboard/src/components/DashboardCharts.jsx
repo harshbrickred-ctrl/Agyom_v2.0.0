@@ -7,6 +7,7 @@ import {
   IconChart, IconPie, IconBar, IconTrending,
 } from './Icons';
 import InfoTip from './InfoTip';
+import DownloadExcelButton from './DownloadExcelButton';
 
 const FALLBACK = {
   success: '#16a34a',
@@ -218,16 +219,20 @@ export default function DashboardCharts({
     requirementRag: null,
   }));
 
-  const openByClient = openPositionsOnClient === null
-    ? byClient(effectiveRows, 'openPositions').sort((a, b) => b.value - a.value).slice(0, 6)
+  const openByClientExport = openPositionsOnClient === null
+    ? byClient(effectiveRows, 'openPositions').sort((a, b) => b.value - a.value)
     : openPositionsOnClient.length
       ? openPositionsOnClient.map((c) => ({ client: c.client, value: c.openPositions }))
       : [];
-  const closedByClient = closedPositionsOnClient === null
-    ? byClient(effectiveRows, 'closedPositions').sort((a, b) => b.value - a.value).slice(0, 6)
+  const closedByClientExport = closedPositionsOnClient === null
+    ? byClient(effectiveRows, 'closedPositions').sort((a, b) => b.value - a.value)
     : closedPositionsOnClient.length
-      ? closedPositionsOnClient.map((c) => ({ client: c.client, value: c.closedPositions })).sort((a, b) => b.value - a.value).slice(0, 6)
+      ? closedPositionsOnClient.map((c) => ({ client: c.client, value: c.closedPositions })).sort((a, b) => b.value - a.value)
       : [];
+  const openByClient = openPositionsOnClient === null
+    ? openByClientExport.slice(0, 6)
+    : openByClientExport;
+  const closedByClient = closedByClientExport.slice(0, 6);
   const rag = ragFromSummary || ragBreakdown(effectiveRows, colors);
   const funnel = pipelineFunnel(effectiveRows);
   const status = positionStatus(effectiveRows, colors);
@@ -264,6 +269,14 @@ export default function DashboardCharts({
         <div className="chart-card span-2">
           <InfoTip text="The same stage counts as the funnel, drawn as bars. Each bar is the number of people at that stage, not a percentage moving from one stage to the next." />
           <h3><IconTrending /> Stage conversion</h3>
+          <DownloadExcelButton
+            filename="stage-conversion"
+            rows={conversion}
+            columns={[
+              { label: 'Stage', key: 'name' },
+              { label: 'Count', key: 'value' },
+            ]}
+          />
           <div className="stage-value-row" aria-hidden="true">
             <span />
             {conversion.map((stage) => (
@@ -293,12 +306,28 @@ export default function DashboardCharts({
       <div className="chart-card">
         <InfoTip text="Unfilled seats grouped by client. Cancelled requirements are not included. A client is listed when it still has at least one open seat." />
         <h3><IconBar /> Open Positions on Client</h3>
+        <DownloadExcelButton
+          filename="open-positions-on-client"
+          rows={openByClientExport}
+          columns={[
+            { label: 'Client', key: 'client' },
+            { label: 'Open Positions', key: 'value' },
+          ]}
+        />
         <ClientBarChart data={openByClient} color={colors.success} empty="No data found." />
       </div>
 
       <div className="chart-card">
         <InfoTip text="People whose onboarding status is Joined, grouped by client. When more than six clients have joined people, the chart shows the six with the most." />
         <h3><IconBar /> Closed Positions on Client</h3>
+        <DownloadExcelButton
+          filename="closed-positions-on-client"
+          rows={closedByClientExport}
+          columns={[
+            { label: 'Client', key: 'client' },
+            { label: 'Closed Positions', key: 'value' },
+          ]}
+        />
         <ClientBarChart data={closedByClient} color={colors.danger} empty="No data found." />
       </div>
 

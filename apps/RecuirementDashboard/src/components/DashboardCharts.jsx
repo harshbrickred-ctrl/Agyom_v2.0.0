@@ -108,22 +108,55 @@ function reduceMotion() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function clientAxisWidth(data) {
+  const longest = data.reduce((max, row) => Math.max(max, String(row.client || '').length), 0);
+  // ~7.2px per character at 11px font, clamped so bars still have room
+  return Math.min(200, Math.max(120, Math.ceil(longest * 7.2) + 8));
+}
+
+function ClientNameTick({ x, y, payload, fill }) {
+  const label = payload?.value == null ? '' : String(payload.value);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{label}</title>
+      <text
+        x={0}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fill={fill}
+        fontSize={11}
+        style={{ pointerEvents: 'none' }}
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
 function ClientBarChart({ data, color, empty }) {
   if (!data.length) {
     return <div className="progress-empty">{empty}</div>;
   }
   const colors = semanticColors();
+  const yWidth = clientAxisWidth(data);
+  const chartHeight = Math.max(220, data.length * 36);
   return (
-    <div className="chart-plot">
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 12, left: 4, bottom: 0 }}>
+    <div className="chart-plot client-bar-plot">
+      <ResponsiveContainer width="100%" height={chartHeight}>
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+        >
           <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
           <YAxis
             type="category"
             dataKey="client"
-            width={92}
-            tick={{ fill: colors.muted, fontSize: 11 }}
+            width={yWidth}
+            interval={0}
+            tick={<ClientNameTick fill={colors.muted} />}
             axisLine={false}
             tickLine={false}
           />

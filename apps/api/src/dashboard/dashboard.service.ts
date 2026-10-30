@@ -16,15 +16,23 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboard(query: DashboardQueryDto): Promise<Record<string, unknown>> {
-    const [summary, breakdowns, escalations, positionsByClient, lists, ownerPerformance] =
-      await Promise.all([
-        this.summary(query),
-        this.breakdowns(query),
-        this.escalations(query),
-        this.positionsByClient(query),
-        this.lists(query),
-        this.ownerPerformance(query),
-      ]);
+    const [
+      summary,
+      breakdowns,
+      escalations,
+      positionsByClient,
+      lists,
+      ownerPerformance,
+      taOwnerDaily,
+    ] = await Promise.all([
+      this.summary(query),
+      this.breakdowns(query),
+      this.escalations(query),
+      this.positionsByClient(query),
+      this.lists(query),
+      this.ownerPerformance(query),
+      this.taOwnerDaily(query),
+    ]);
 
     return {
       summary,
@@ -36,6 +44,7 @@ export class DashboardService {
       closedPositionsOnClient: positionsByClient.closedPositionsOnClient,
       lists,
       ownerPerformance,
+      taOwnerDaily,
     };
   }
 
@@ -51,11 +60,8 @@ export class DashboardService {
     return date;
   }
 
-  /**
-   * Requirement dimension filters, including optional requirement date (from/to).
-   * Does not apply profile-submitted bounds.
-   */
-  private requirementDimensions(
+  /** Client / owner / family / priority scope without requirement-date bounds. */
+  private requirementScopeDimensions(
     query: DashboardQueryDto,
   ): Prisma.RequirementWhereInput {
     return {
@@ -67,6 +73,18 @@ export class DashboardService {
       ...(query.clientId ? { clientId: query.clientId } : {}),
       ...(query.jobFamilyId ? { jobFamilyId: query.jobFamilyId } : {}),
       ...(query.priorityCode ? { priorityCode: query.priorityCode } : {}),
+    };
+  }
+
+  /**
+   * Requirement dimension filters, including optional requirement date (from/to).
+   * Does not apply profile-submitted bounds.
+   */
+  private requirementDimensions(
+    query: DashboardQueryDto,
+  ): Prisma.RequirementWhereInput {
+    return {
+      ...this.requirementScopeDimensions(query),
       ...(query.from || query.to
         ? {
             requirementDate: {
@@ -75,6 +93,33 @@ export class DashboardService {
             },
           }
         : {}),
+    };
+  }
+
+  /** YYYY-MM-DD in UTC for bucketing calendar days. */
+  private dayKey(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  /**
+   * Activity window for TA daily monitoring.
+   * Uses FilterBar from/to when set; otherwise last 30 UTC calendar days inclusive.
+   */
+  private activityWindow(query: DashboardQueryDto): { from: string; to: string } {
+    if (query.from || query.to) {
+      const from = query.from || query.to!;
+      const to = query.to || query.from!;
+      return { from, to };
+    }
+    const now = new Date();
+    const toDate = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const fromDate = new Date(toDate);
+    fromDate.setUTCDate(fromDate.getUTCDate() - 29);
+    return {
+      from: this.dayKey(fromDate),
+      to: this.dayKey(toDate),
     };
   }
 
@@ -1367,5 +1412,166 @@ export class DashboardService {
     );
 
     return { sales, ta, taTotal };
+  }
+
+  /**
+   * Per-TA per-day activity for monitoring.
+   * Positions Assigned → assignment assignedAt; Sourced → profileSubmittedDate|createdAt;
+   * Selected → selectedAt only. FilterBar from/to bound the activity window (default 30 days).
+   */
+  async taOwnerDaily(query: DashboardQueryDto) {
+    const window = this.activityWindow(query);
+    const fromStart = this.dayStart(window.from);
+    const toEnd = this.dayEnd(window.to);
+    const scope: Prisma.RequirementWhereInput = {
+      ...this.requirementScopeDimensions(query),
+      status: { not: 'CANCELLED' },
+    };
+    const profileFilter = this.profileSubmittedFilter(query);
+
+    type DailyBucket = {
+      date: string;
+      taOwnerId: string;
+      taOwnerName: string;
+      positionsAssigned: number;
+      candidatesSourced: number;
+      selectedCandidates: number;
+    };
+    const buckets = new Map<string, DailyBucket>();
+    const bump = (
+      date: string,
+      owner: { id: string; fullName: string },
+      field: 'positionsAssigned' | 'candidatesSourced' | 'selectedCandidates',
+      amount: number,
+    ) => {
+      if (!owner || amount === 0) return;
+      if (query.taOwnerId && owner.id !== query.taOwnerId) return;
+      const key = `${date}|${owner.id}`;
+      const row = buckets.get(key) ?? {
+        date,
+        taOwnerId: owner.id,
+        taOwnerName: owner.fullName,
+        positionsAssigned: 0,
+        candidatesSourced: 0,
+        selectedCandidates: 0,
+      };
+      row[field] += amount;
+      buckets.set(key, row);
+    };
+
+    const resolvePrimaryTa = (requirement: {
+      taOwner: { id: string; fullName: string } | null;
+      taAssignments: Array<{
+        isPrimary: boolean;
+        user: { id: string; fullName: string };
+      }>;
+    }): { id: string; fullName: string } | null =>
+      requirement.taAssignments.find((assignment) => assignment.isPrimary)?.user ??
+      requirement.taAssignments[0]?.user ??
+      requirement.taOwner ??
+      null;
+
+    const [assignments, candidates] = await Promise.all([
+      this.prisma.requirementTaAssignment.findMany({
+        where: {
+          assignedAt: { gte: fromStart, lte: toEnd },
+          ...(query.taOwnerId ? { userId: query.taOwnerId } : {}),
+          user: {
+            deletedAt: null,
+            isActive: true,
+            role: { in: [Role.TA, Role.TA_LEAD] },
+          },
+          requirement: scope,
+        },
+        select: {
+          assignedAt: true,
+          user: { select: { id: true, fullName: true } },
+          requirement: { select: { numberOfPositions: true } },
+        },
+      }),
+      this.prisma.candidate.findMany({
+        where: {
+          deletedAt: null,
+          requirement: scope,
+          ...(profileFilter ?? {}),
+          OR: [
+            { profileSubmittedDate: { gte: fromStart, lte: toEnd } },
+            {
+              AND: [
+                { profileSubmittedDate: null },
+                { createdAt: { gte: fromStart, lte: toEnd } },
+              ],
+            },
+            {
+              selected: true,
+              selectedAt: { gte: fromStart, lte: toEnd },
+            },
+          ],
+        },
+        select: {
+          profileSubmittedDate: true,
+          createdAt: true,
+          selected: true,
+          selectedAt: true,
+          requirement: {
+            select: {
+              taOwner: { select: { id: true, fullName: true } },
+              taAssignments: {
+                select: {
+                  isPrimary: true,
+                  user: { select: { id: true, fullName: true } },
+                },
+                orderBy: [
+                  { isPrimary: 'desc' as const },
+                  { assignedAt: 'asc' as const },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    for (const assignment of assignments) {
+      bump(
+        this.dayKey(assignment.assignedAt),
+        assignment.user,
+        'positionsAssigned',
+        assignment.requirement.numberOfPositions,
+      );
+    }
+
+    for (const candidate of candidates) {
+      const primary = resolvePrimaryTa(candidate.requirement);
+      if (!primary) continue;
+
+      const sourcedAt = candidate.profileSubmittedDate ?? candidate.createdAt;
+      const sourcedDay = this.dayKey(sourcedAt);
+      if (sourcedAt >= fromStart && sourcedAt <= toEnd) {
+        bump(sourcedDay, primary, 'candidatesSourced', 1);
+      }
+
+      if (
+        candidate.selected &&
+        candidate.selectedAt &&
+        candidate.selectedAt >= fromStart &&
+        candidate.selectedAt <= toEnd
+      ) {
+        bump(this.dayKey(candidate.selectedAt), primary, 'selectedCandidates', 1);
+      }
+    }
+
+    return [...buckets.values()]
+      .filter(
+        (row) =>
+          row.positionsAssigned > 0 ||
+          row.candidatesSourced > 0 ||
+          row.selectedCandidates > 0,
+      )
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          a.taOwnerName.localeCompare(b.taOwnerName),
+      );
   }
 }

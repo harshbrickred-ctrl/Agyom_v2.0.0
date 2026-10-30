@@ -522,6 +522,36 @@ export class DashboardOwnerPerformanceDto {
   taTotal!: DashboardTaOwnerTotalDto;
 }
 
+export class DashboardTaOwnerDailyRowDto {
+  @ApiProperty({ example: '2026-10-15', description: 'UTC calendar day YYYY-MM-DD' })
+  date!: string;
+
+  @ApiProperty()
+  taOwnerId!: string;
+
+  @ApiProperty({ example: 'Dipanshi' })
+  taOwnerName!: string;
+
+  @ApiProperty({
+    example: 4,
+    description: 'Positions on TA assignments whose assignedAt falls on this day',
+  })
+  positionsAssigned!: number;
+
+  @ApiProperty({
+    example: 6,
+    description:
+      'Candidates sourced on this day (profileSubmittedDate, else createdAt), attributed to primary TA',
+  })
+  candidatesSourced!: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Candidates with selectedAt on this day, attributed to primary TA',
+  })
+  selectedCandidates!: number;
+}
+
 export class DashboardDto {
   @ApiProperty({ type: DashboardSummaryDto })
   summary!: DashboardSummaryDto;
@@ -563,4 +593,11 @@ export class DashboardDto {
       'Sales-owner and primary TA-owner workload for the same filters',
   })
   ownerPerformance!: DashboardOwnerPerformanceDto;
+
+  @ApiProperty({
+    type: [DashboardTaOwnerDailyRowDto],
+    description:
+      'Per-TA per-day positions assigned (by assignedAt), candidates sourced, and selected (by selectedAt). FilterBar from/to bound the activity window (default last 30 days).',
+  })
+  taOwnerDaily!: DashboardTaOwnerDailyRowDto[];
 }

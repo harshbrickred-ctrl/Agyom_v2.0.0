@@ -24,7 +24,7 @@ export class DashboardController {
     operationId: 'getDashboard',
     summary: 'Complete dashboard data',
     description:
-      'Single dashboard API. Send filter keys in the JSON body. Omit a key (or send {}) for all data. Keys: taOwnerId, salesOwnerId, clientId, jobFamilyId, priorityCode, from, to (requirement date), profileSubmittedFrom, profileSubmittedTo (candidate pipeline).',
+      'Single dashboard API. Send filter keys in the JSON body. Omit a key (or send {}) for all data. Keys: taOwnerId, salesOwnerId, clientId, jobFamilyId, priorityCode, from, to (requirement date for most KPIs; activity window for taOwnerDaily, default last 30 days), profileSubmittedFrom, profileSubmittedTo (candidate pipeline).',
   })
   @ApiBody({ type: DashboardQueryDto, required: false })
   @ApiOkResponse({ type: DashboardDto })

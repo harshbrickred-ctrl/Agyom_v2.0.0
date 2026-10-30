@@ -65,14 +65,14 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
     filters.profileSubmittedFrom
       ? {
           key: 'profileSubmittedFrom',
-          label: `Profile from ${filters.profileSubmittedFrom}`,
+          label: `Sourcing from ${filters.profileSubmittedFrom}`,
           reset: () => handle('profileSubmittedFrom', ''),
         }
       : null,
     filters.profileSubmittedTo
       ? {
           key: 'profileSubmittedTo',
-          label: `Profile to ${filters.profileSubmittedTo}`,
+          label: `Sourcing to ${filters.profileSubmittedTo}`,
           reset: () => handle('profileSubmittedTo', ''),
         }
       : null,
@@ -85,7 +85,7 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
         <span>Filters</span>
         <InfoTip
           inline
-          text="Narrows every metric, chart, and owner table by TA owner, sales owner, client, job family, priority, requirement date, and profile submitted date. Requirement date scopes which requirements are included. Profile submitted scopes candidate pipeline metrics; when set, requirement metrics also require at least one matching submission."
+          text="Narrows every metric, chart, and owner table by TA owner, sales owner, client, job family, priority, requirement date, and sourcing date. Requirement date scopes which requirements are included. Sourcing scopes candidate pipeline metrics by profile submitted date; when set, requirement metrics also require at least one matching submission."
         />
         {activeCount > 0 && <span className="filter-count">{activeCount} active</span>}
         {activeCount > 0 && (
@@ -160,21 +160,21 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
         <div className="filter-field filter-date-range">
           <span className="filter-label">
             <IconCalendar />
-            Profile Submitted
+            Sourcing
           </span>
           <div className="filter-date-pair">
             <input
               type="date"
               value={filters.profileSubmittedFrom || ''}
               onChange={(e) => handle('profileSubmittedFrom', e.target.value)}
-              aria-label="Profile submitted from"
+              aria-label="Sourcing from"
             />
             <span className="filter-date-sep" aria-hidden="true">–</span>
             <input
               type="date"
               value={filters.profileSubmittedTo || ''}
               onChange={(e) => handle('profileSubmittedTo', e.target.value)}
-              aria-label="Profile submitted to"
+              aria-label="Sourcing to"
             />
           </div>
         </div>

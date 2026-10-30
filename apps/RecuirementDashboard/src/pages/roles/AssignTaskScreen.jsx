@@ -24,6 +24,7 @@ const FALLBACK_STAGES = [
   { code: 'CLIENT_SHORTLIST', label: 'Client Shortlist' },
   { code: 'HOLD', label: 'Hold' },
   { code: 'REJECT', label: 'Reject' },
+  { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to higher CTC asked' },
 ];
 
 const FALLBACK_ROUNDS = [

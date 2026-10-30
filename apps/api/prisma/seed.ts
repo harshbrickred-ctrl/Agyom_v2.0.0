@@ -41,6 +41,10 @@ const LOOKUPS: Record<string, { code: string; label: string }[]> = {
     { code: 'CLIENT_SHORTLIST', label: 'Client Shortlist' },
     { code: 'HOLD', label: 'Hold' },
     { code: 'REJECT', label: 'Reject' },
+    {
+      code: 'REJECT_HIGHER_CTC',
+      label: 'Rejected due to higher CTC asked',
+    },
   ],
   INTERVIEW_ROUND: [
     { code: 'L1', label: 'L1' },

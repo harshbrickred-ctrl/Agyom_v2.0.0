@@ -57,7 +57,11 @@ export function derivePipelineStage(input: {
 
   const stage = (input.stageCode ?? '').toUpperCase();
   const feedback = (input.feedbackCode ?? '').toUpperCase();
-  if (stage === 'REJECT' || feedback === 'NEGATIVE') {
+  if (
+    stage === 'REJECT' ||
+    stage === 'REJECT_HIGHER_CTC' ||
+    feedback === 'NEGATIVE'
+  ) {
     return { pipelineStage: 'REJECT', pipelineLabel: PIPELINE_LABELS.REJECT };
   }
   if (stage === 'HOLD') {

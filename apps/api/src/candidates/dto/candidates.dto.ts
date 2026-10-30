@@ -48,7 +48,7 @@ export class CreateCandidateDto {
   @ApiProperty({
     example: 'SUBMITTED_TO_SPOC',
     description:
-      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | CLIENT_SHORTLIST | HOLD | REJECT',
+      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | CLIENT_SHORTLIST | HOLD | REJECT | REJECT_HIGHER_CTC',
   })
   @IsString()
   stageCode!: string;
@@ -140,7 +140,7 @@ export class UpdateCandidateDto {
   @ApiPropertyOptional({
     example: 'CLIENT_SHORTLIST',
     description:
-      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | CLIENT_SHORTLIST | HOLD | REJECT',
+      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | CLIENT_SHORTLIST | HOLD | REJECT | REJECT_HIGHER_CTC',
   })
   @IsOptional()
   @IsString()

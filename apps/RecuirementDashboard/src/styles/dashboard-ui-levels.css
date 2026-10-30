@@ -1110,6 +1110,14 @@
   min-height: 220px;
 }
 
+.dashboard .client-bar-plot {
+  overflow: visible;
+}
+
+.dashboard .client-bar-plot .recharts-cartesian-axis-tick text {
+  overflow: visible;
+}
+
 .dashboard .chart-donut {
   display: flex;
   align-items: center;

@@ -24,14 +24,14 @@ Local/dev environments.
 ## Migrations
 
 ```bash
-pnpm --filter api prisma migrate dev --name init
-pnpm --filter api prisma migrate deploy
+pnpm --filter @sst/api exec prisma migrate dev --name init
+pnpm --filter @sst/api exec prisma migrate deploy
 ```
 
 Reset (destructive):
 
 ```bash
-pnpm --filter api prisma migrate reset
+pnpm --filter @sst/api exec prisma migrate reset
 ```
 
 ## Seed contents (required)

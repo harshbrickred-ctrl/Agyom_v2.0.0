@@ -724,6 +724,7 @@ export class CandidatesService {
       data: {
         publicId,
         requirementId: dto.requirementId,
+        sourcedByUserId: actor.id,
         name: dto.name,
         mobile: dto.mobile,
         mobileNormalized,
@@ -1084,7 +1085,9 @@ export class CandidatesService {
     });
     if (!req) throw new NotFoundException('Requirement not found');
 
-    const tokens = this.tokenize(`${q || ''} ${req.roleSkill || ''}`);
+    const queryText = String(q || '').trim();
+    // Prefer explicit search text; fall back to role skill for browse-by-similarity.
+    const tokens = this.tokenize(queryText || req.roleSkill || '');
     if (!tokens.length) return { items: [] };
 
     const or: Prisma.CandidateWhereInput[] = [];
@@ -1093,6 +1096,10 @@ export class CandidatesService {
         { position: { contains: t, mode: 'insensitive' } },
         { jobFamily: { contains: t, mode: 'insensitive' } },
         { name: { contains: t, mode: 'insensitive' } },
+        { email: { contains: t, mode: 'insensitive' } },
+        { emailNormalized: { contains: t.toLowerCase(), mode: 'insensitive' } },
+        { mobile: { contains: t, mode: 'insensitive' } },
+        { mobileNormalized: { contains: t.replace(/\D/g, ''), mode: 'insensitive' } },
         { requirement: { roleSkill: { contains: t, mode: 'insensitive' } } },
         { requirement: { jobLocation: { contains: t, mode: 'insensitive' } } },
         { requirement: { experience: { contains: t, mode: 'insensitive' } } },
@@ -1126,12 +1133,18 @@ export class CandidatesService {
     const scored = rows
       .map((row) => {
         let score = 0;
+        const onboardingStatus = (
+          (row.onboarding as { statusCode?: string } | null)?.statusCode ?? ''
+        ).toUpperCase();
+        if (onboardingStatus === 'JOINED' || onboardingStatus === 'COMPLETED') {
+          score += 60;
+        }
         if (row.selected) score += 100;
         if (row.offer) score += 40;
         if (req.jobFamilyId && row.requirement?.jobFamilyId === req.jobFamilyId) {
           score += 30;
         }
-        const hay = `${row.position || ''} ${row.jobFamily || ''} ${row.requirement?.roleSkill || ''}`.toLowerCase();
+        const hay = `${row.position || ''} ${row.jobFamily || ''} ${row.requirement?.roleSkill || ''} ${row.name || ''} ${row.email || ''} ${row.mobile || ''}`.toLowerCase();
         for (const t of tokens) {
           if (hay.includes(t.toLowerCase())) score += 8;
         }

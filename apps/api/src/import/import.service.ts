@@ -235,6 +235,7 @@ export class ImportService {
         data: {
           publicId,
           requirementId: req.id,
+          sourcedByUserId: actorId,
           name: obj.name,
           mobile: obj.mobile,
           mobileNormalized: normalizeMobile(obj.mobile),

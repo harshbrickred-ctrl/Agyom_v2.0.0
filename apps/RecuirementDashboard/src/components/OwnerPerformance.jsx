@@ -135,7 +135,7 @@ export default function OwnerPerformance({ data }) {
       </div>
 
       <div className="chart-card">
-        <InfoTip text="Every active TA owner, counted on the primary TA for each requirement. Positions assigned, candidates sourced, and selected follow the sales chart, and Cancelled requirements are excluded." />
+        <InfoTip text="Every active TA. Positions assigned count on the primary TA for each requirement. Candidates sourced, selected, and joined count toward the TA who added the candidate (sourced by)." />
         <h3><IconUsers /> TA Owner: Positions Assigned vs Candidates Sourced vs Selected</h3>
         <DownloadExcelButton
           filename="ta-owner-chart"
@@ -155,7 +155,7 @@ export default function OwnerPerformance({ data }) {
       </div>
 
       <div className="chart-card">
-        <InfoTip text="The same TA owners as the chart. Sourced per position is candidates divided by assigned seats. Open positions are unfilled seats on Active and On Hold requirements. Joined is people whose onboarding status is Joined." />
+        <InfoTip text="The same TA owners as the chart. Sourced per position is candidates divided by assigned seats. Open positions are unfilled seats on Active and On Hold requirements. Joined counts toward the TA who added the candidate." />
         <h3>
           <IconUsers /> By TA Owner
           <span>showing {ta.length} TA {ta.length === 1 ? 'owner' : 'owners'}</span>

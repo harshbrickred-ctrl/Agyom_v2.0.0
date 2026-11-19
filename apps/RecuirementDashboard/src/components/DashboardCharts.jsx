@@ -1,25 +1,40 @@
+
+import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Sector,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
-import {
-  IconChart, IconPie, IconBar, IconTrending,
-} from './Icons';
+
+import { IconPie, IconBar, IconTrending } from './Icons';
 import InfoTip from './InfoTip';
 import DownloadExcelButton from './DownloadExcelButton';
+import './css/DashboardCharts.css';
 
 const FALLBACK = {
   success: '#16a34a',
   successBright: '#4ade80',
   warning: '#f59e0b',
   danger: '#dc2626',
-  primary: '#0ea5e9',
+  primary: '#4c63ff',
 };
 
-function cssVar(name, fallback = '#888') {
+function cssVar(name, fallback) {
   if (typeof window === 'undefined') return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+  return (
+    getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim() || fallback
+  );
 }
 
 function semanticColors() {
@@ -29,29 +44,40 @@ function semanticColors() {
     warning: cssVar('--color-warning-bright', FALLBACK.warning),
     danger: cssVar('--color-danger', FALLBACK.danger),
     primary: cssVar('--primary', FALLBACK.primary),
-    text: cssVar('--dash-text-strong', cssVar('--text', '#f0f7fb')),
-    muted: cssVar('--dash-text-quiet', cssVar('--text-soft', '#8aa6b8')),
-    grid: cssVar('--grid', '#243640'),
-    tooltipBg: cssVar('--tooltip-bg', cssVar('--surface', '#16212a')),
-    border: cssVar('--dash-card-border', cssVar('--border', '#243640')),
+    text: cssVar('--dash-text-strong', cssVar('--text', '#172033')),
+    muted: cssVar('--dash-text-quiet', cssVar('--text-soft', '#8490a2')),
+    grid: cssVar('--grid', '#e8edf3'),
   };
 }
 
 function byClient(rows, field) {
   const map = {};
-  rows.forEach((r) => { map[r.client] = (map[r.client] || 0) + (r[field] || 0); });
-  return Object.entries(map).map(([client, value]) => ({ client, value }));
+
+  rows.forEach((row) => {
+    const client = row.client || 'Unknown';
+    map[client] = (map[client] || 0) + Number(row[field] || 0);
+  });
+
+  return Object.entries(map)
+    .map(([client, value]) => ({ client, value }))
+    .sort((a, b) => b.value - a.value);
 }
 
 function normalizeRagSummary(summary, colors) {
   if (!Array.isArray(summary)) return null;
+
   const map = { Green: 0, Amber: 0, Red: 0 };
+
   summary.forEach((item) => {
-    const key = String(item.rag || item.RAG || item.ragStatus || item.status || '').trim();
-    if (key.toLowerCase() === 'green') map.Green += Number(item.count || item.value || 0);
-    if (key.toLowerCase() === 'amber') map.Amber += Number(item.count || item.value || 0);
-    if (key.toLowerCase() === 'red') map.Red += Number(item.count || item.value || 0);
+    const key = String(
+      item.rag || item.RAG || item.ragStatus || item.status || ''
+    ).trim().toLowerCase();
+
+    if (key === 'green') map.Green += Number(item.count || item.value || 0);
+    if (key === 'amber') map.Amber += Number(item.count || item.value || 0);
+    if (key === 'red') map.Red += Number(item.count || item.value || 0);
   });
+
   return [
     { name: 'Green', value: map.Green, color: colors.success },
     { name: 'Amber', value: map.Amber, color: colors.warning },
@@ -61,7 +87,12 @@ function normalizeRagSummary(summary, colors) {
 
 function ragBreakdown(rows, colors) {
   const map = { Green: 0, Amber: 0, Red: 0 };
-  rows.forEach((r) => { if (map[r.requirementRag] != null) map[r.requirementRag]++; });
+
+  rows.forEach((row) => {
+    const key = String(row.requirementRag || '').trim();
+    if (map[key] !== undefined) map[key] += 1;
+  });
+
   return [
     { name: 'Green', value: map.Green, color: colors.success },
     { name: 'Amber', value: map.Amber, color: colors.warning },
@@ -71,51 +102,95 @@ function ragBreakdown(rows, colors) {
 
 function pipelineFunnel(rows) {
   return [
-    { stage: 'Pipeline', value: rows.reduce((s, r) => s + (r.candidatesInPipeline || 0), 0) },
-    { stage: 'Client Selected', value: rows.reduce((s, r) => s + (r.selectedCandidates || 0), 0) },
-    { stage: 'Offer Release', value: rows.reduce((s, r) => s + (r.offersReleased || 0), 0) },
-    { stage: 'Offer Accepted', value: rows.reduce((s, r) => s + (r.offersAccepted || 0), 0) },
-    { stage: 'Joined', value: rows.reduce((s, r) => s + (r.candidatesJoined || 0), 0) },
+    {
+      stage: 'Pipeline',
+      value: rows.reduce(
+        (sum, row) => sum + Number(row.candidatesInPipeline || 0),
+        0
+      ),
+    },
+    {
+      stage: 'Selected',
+      value: rows.reduce(
+        (sum, row) => sum + Number(row.selectedCandidates || 0),
+        0
+      ),
+    },
+    {
+      stage: 'Offer Released',
+      value: rows.reduce(
+        (sum, row) => sum + Number(row.offersReleased || 0),
+        0
+      ),
+    },
+    {
+      stage: 'Accepted',
+      value: rows.reduce(
+        (sum, row) => sum + Number(row.offersAccepted || 0),
+        0
+      ),
+    },
+    {
+      stage: 'Joined',
+      value: rows.reduce(
+        (sum, row) => sum + Number(row.candidatesJoined || 0),
+        0
+      ),
+    },
   ];
 }
 
 function positionStatus(rows, colors) {
-  const open = rows.reduce((s, r) => s + (r.openPositions || 0), 0);
-  const closed = rows.reduce((s, r) => s + (r.closedPositions || 0), 0);
+  const open = rows.reduce(
+    (sum, row) => sum + Number(row.openPositions || 0),
+    0
+  );
+
+  const closed = rows.reduce(
+    (sum, row) => sum + Number(row.closedPositions || 0),
+    0
+  );
+
   return [
     { name: 'Open', value: open, color: colors.successBright },
     { name: 'Closed', value: closed, color: colors.danger },
   ];
 }
 
-function stageConversion(funnel) {
-  return funnel.map((stage) => ({ name: stage.stage, value: stage.value }));
-}
-
-function ChartTooltip({ active, payload, label, suffix = '' }) {
+function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
+
   const item = payload[0];
-  const title = label || item.name || item.payload?.name || item.payload?.client;
+  const title =
+    label || item.name || item.payload?.name || item.payload?.client;
+
   return (
-    <div className="chart-tooltip">
+    <div className="dc-tooltip">
       <strong>{title}</strong>
-      <span>{item.value}{suffix}</span>
+      <span>{item.value}</span>
     </div>
   );
 }
 
 function reduceMotion() {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 }
 
 function clientAxisWidth(data) {
-  const longest = data.reduce((max, row) => Math.max(max, String(row.client || '').length), 0);
-  // ~7.2px per character at 11px font, clamped so bars still have room
-  return Math.min(200, Math.max(120, Math.ceil(longest * 7.2) + 8));
+  const longest = data.reduce(
+    (max, row) => Math.max(max, String(row.client || '').length),
+    0
+  );
+
+  return Math.min(170, Math.max(105, Math.ceil(longest * 6.5) + 8));
 }
 
 function ClientNameTick({ x, y, payload, fill }) {
   const label = payload?.value == null ? '' : String(payload.value);
+
   return (
     <g transform={`translate(${x},${y})`}>
       <title>{label}</title>
@@ -126,9 +201,8 @@ function ClientNameTick({ x, y, payload, fill }) {
         textAnchor="end"
         fill={fill}
         fontSize={11}
-        style={{ pointerEvents: 'none' }}
       >
-        {label}
+        {label.length > 22 ? `${label.slice(0, 20)}…` : label} 
       </text>
     </g>
   );
@@ -136,21 +210,36 @@ function ClientNameTick({ x, y, payload, fill }) {
 
 function ClientBarChart({ data, color, empty }) {
   if (!data.length) {
-    return <div className="progress-empty">{empty}</div>;
+    return <div className="dc-empty">{empty}</div>;
   }
+
   const colors = semanticColors();
   const yWidth = clientAxisWidth(data);
-  const chartHeight = Math.max(220, data.length * 36);
+  const chartHeight = Math.max(175, data.length * 29);
+
   return (
-    <div className="chart-plot client-bar-plot">
+    <div className="dc-client-chart">
       <ResponsiveContainer width="100%" height={chartHeight}>
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+          margin={{ top: 3, right: 12, left: 4, bottom: 0 }}
+          barCategoryGap={9}
         >
-          <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <CartesianGrid
+            stroke={colors.grid}
+            strokeDasharray="3 4"
+            horizontal={false}
+          />
+
+          <XAxis
+            type="number"
+            tick={{ fill: colors.muted, fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+            allowDecimals={false}
+          />
+
           <YAxis
             type="category"
             dataKey="client"
@@ -160,221 +249,411 @@ function ClientBarChart({ data, color, empty }) {
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(14, 165, 233, 0.08)' }} />
-          <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} maxBarSize={18} isAnimationActive={!reduceMotion()} />
+
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ fill: 'rgba(76, 99, 255, 0.07)' }}
+          />
+
+          <Bar
+            dataKey="value"
+            fill={color}
+            radius={[0, 5, 5, 0]}
+            maxBarSize={17}
+            isAnimationActive={!reduceMotion()}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-const DONUT_INNER = 52;
-const DONUT_OUTER = 74;
+function CompactDonut({ data, total, centerLabel }) {
+  const hasData = data.some((item) => item.value > 0);
 
-function StableDonutSector(props) {
-  return <Sector {...props} innerRadius={DONUT_INNER} outerRadius={DONUT_OUTER} />;
-}
-
-function DonutChart({ data, centerLabel, total }) {
-  const hasData = data.some((d) => d.value > 0);
   if (!hasData) {
-    return <div className="progress-empty">No data found.</div>;
+    return <div className="dc-empty dc-donut-empty">No data found.</div>;
   }
+
   return (
-    <div className="chart-donut">
-      <div className="chart-donut-wrap">
-        <ResponsiveContainer width="100%" height={180}>
+    <div className="dc-donut-layout">
+      <div className="dc-donut-wrap">
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               dataKey="value"
               nameKey="name"
-              innerRadius={DONUT_INNER}
-              outerRadius={DONUT_OUTER}
+              cx="50%"
+              cy="50%"
+              innerRadius={39}
+              outerRadius={56}
               paddingAngle={2}
               stroke="none"
-              shape={StableDonutSector}
-              activeShape={StableDonutSector}
               isAnimationActive={!reduceMotion()}
             >
-              {data.map((d) => (
-                <Cell key={d.name} fill={d.color} />
+              {data.map((item) => (
+                <Cell key={item.name} fill={item.color} />
               ))}
             </Pie>
+
             <Tooltip
               content={<ChartTooltip />}
-              offset={28}
-              allowEscapeViewBox={{ x: true, y: true }}
-              wrapperStyle={{ zIndex: 1 }}
+              wrapperStyle={{ zIndex: 5 }}
             />
           </PieChart>
         </ResponsiveContainer>
-        <div className="chart-donut-center">
+
+        <div className="dc-donut-center">
           <strong>{total}</strong>
           <span>{centerLabel}</span>
         </div>
       </div>
-      <ul className="rag-legend">
-        {data.map((d) => (
-          <li key={d.name}>
-            <span className="rag-dot" style={{ background: d.color }} />
-            {d.name}
-            <strong>{d.value}</strong>
-            <em>{total ? Math.round((d.value / total) * 100) : 0}%</em>
-          </li>
-        ))}
+
+      <ul className="dc-legend">
+        {data.map((item) => {
+          const percentage = total
+            ? Math.round((item.value / total) * 100)
+            : 0;
+
+          return (
+            <li key={item.name}>
+              <span
+                className="dc-legend-dot"
+                style={{ background: item.color }}
+              />
+
+              <span className="dc-legend-name">{item.name}</span>
+              <strong>{item.value}</strong>
+              <em>{percentage}%</em>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
+
+function StageConversionChart({ data }) {
+  const maxValue = Math.max(...data.map((item) => item.value), 0);
+
+  return (
+    <div className="dc-stage-flow">
+      {data.map((item, index) => (
+        <div className="dc-stage-step" key={item.name}>
+          <div className="dc-stage-step-top">
+            <span className="dc-stage-step-number">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+
+            <strong>{item.value}</strong>
+          </div>
+
+          <div className="dc-stage-track">
+            <span
+              className="dc-stage-track-fill"
+              style={{
+                width: `${maxValue ? (item.value / maxValue) * 100 : 0}%`,
+              }}
+            />
+          </div>
+
+          <span className="dc-stage-step-label">{item.name}</span>
+
+          {index !== data.length - 1 && (
+            <span className="dc-stage-connector" aria-hidden="true">
+              <span />
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 export default function DashboardCharts({
-  rows,
+  rows = [],
   kpis = [],
   openPositionsOnClient = null,
   closedPositionsOnClient = null,
   requirementRagSummary = null,
 }) {
   const { theme } = useTheme();
-  void theme;
-  const colors = semanticColors();
+  const [positionTab, setPositionTab] = useState('open');
 
-  const ragFromSummary = normalizeRagSummary(requirementRagSummary, colors);
-  const effectiveRows = rows.length ? rows : kpis.map((k) => ({
-    client: k.label,
-    openPositions: k.label === 'openPositions' ? k.value : 0,
-    closedPositions: k.label === 'closedPositions' ? k.value : 0,
-    candidatesInPipeline: k.label === 'candidatesInPipeline' ? k.value : 0,
-    selectedCandidates: k.label === 'selectedCandidates' ? k.value : 0,
-    offersReleased: k.label === 'offersReleased' ? k.value : 0,
-    offersAccepted: k.label === 'offersAccepted' ? k.value : 0,
-    candidatesJoined: k.label === 'candidatesJoined' ? k.value : 0,
-    requirementRag: null,
+  // Reading theme keeps this component in sync with ThemeContext.
+  void theme;
+
+  const colors = semanticColors();
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  const effectiveRows = safeRows.length
+    ? safeRows
+    : kpis.map((item) => ({
+        client: item.label,
+        openPositions: item.label === 'openPositions' ? item.value : 0,
+        closedPositions: item.label === 'closedPositions' ? item.value : 0,
+        candidatesInPipeline:
+          item.label === 'candidatesInPipeline' ? item.value : 0,
+        selectedCandidates:
+          item.label === 'selectedCandidates' ? item.value : 0,
+        offersReleased: item.label === 'offersReleased' ? item.value : 0,
+        offersAccepted: item.label === 'offersAccepted' ? item.value : 0,
+        candidatesJoined: item.label === 'candidatesJoined' ? item.value : 0,
+        requirementRag: null,
+      }));
+
+  const openByClientExport =
+    openPositionsOnClient === null
+      ? byClient(effectiveRows, 'openPositions')
+      : Array.isArray(openPositionsOnClient)
+        ? openPositionsOnClient
+            .map((item) => ({
+              client: item.client,
+              value: Number(item.openPositions || 0),
+            }))
+            .sort((a, b) => b.value - a.value)
+        : [];
+
+  const closedByClientExport =
+    closedPositionsOnClient === null
+      ? byClient(effectiveRows, 'closedPositions')
+      : Array.isArray(closedPositionsOnClient)
+        ? closedPositionsOnClient
+            .map((item) => ({
+              client: item.client,
+              value: Number(item.closedPositions || 0),
+            }))
+            .sort((a, b) => b.value - a.value)
+        : [];
+
+  const openByClient = openByClientExport.slice(0, 6);
+  const closedByClient = closedByClientExport.slice(0, 6);
+
+  const rag =
+    normalizeRagSummary(requirementRagSummary, colors) ||
+    ragBreakdown(effectiveRows, colors);
+
+  const status = positionStatus(effectiveRows, colors);
+  const funnel = pipelineFunnel(effectiveRows);
+  const conversion = funnel.map((item) => ({
+    name: item.stage,
+    value: item.value,
   }));
 
-  const openByClientExport = openPositionsOnClient === null
-    ? byClient(effectiveRows, 'openPositions').sort((a, b) => b.value - a.value)
-    : openPositionsOnClient.length
-      ? openPositionsOnClient.map((c) => ({ client: c.client, value: c.openPositions }))
-      : [];
-  const closedByClientExport = closedPositionsOnClient === null
-    ? byClient(effectiveRows, 'closedPositions').sort((a, b) => b.value - a.value)
-    : closedPositionsOnClient.length
-      ? closedPositionsOnClient.map((c) => ({ client: c.client, value: c.closedPositions })).sort((a, b) => b.value - a.value)
-      : [];
-  const openByClient = openPositionsOnClient === null
-    ? openByClientExport.slice(0, 6)
-    : openByClientExport;
-  const closedByClient = closedByClientExport.slice(0, 6);
-  const rag = ragFromSummary || ragBreakdown(effectiveRows, colors);
-  const funnel = pipelineFunnel(effectiveRows);
-  const status = positionStatus(effectiveRows, colors);
-  const conversion = stageConversion(funnel);
+  const ragTotal = rag.reduce((sum, item) => sum + item.value, 0);
+  const statusTotal = status.reduce((sum, item) => sum + item.value, 0);
+  const openTotal = openByClientExport.reduce(
+    (sum, item) => sum + item.value,
+    0
+  );
+  const closedTotal = closedByClientExport.reduce(
+    (sum, item) => sum + item.value,
+    0
+  );
 
-  const ragTotal = rag.reduce((s, d) => s + d.value, 0);
-  const statusTotal = status.reduce((s, d) => s + d.value, 0);
-  const funnelHasData = funnel.some((d) => d.value > 0);
+  const activeData =
+    positionTab === 'open' ? openByClient : closedByClient;
+
+  const activeExportData =
+    positionTab === 'open'
+      ? openByClientExport
+      : closedByClientExport;
+
+  const activeTotal =
+    positionTab === 'open' ? openTotal : closedTotal;
+
+  const activeColor =
+    positionTab === 'open' ? colors.success : colors.danger;
+
+  const positionColumns = [
+    { label: 'Client', key: 'client' },
+    {
+      label: positionTab === 'open' ? 'Open Positions' : 'Closed Positions',
+      key: 'value',
+    },
+  ];
+
+  const funnelHasData = conversion.some((item) => item.value > 0);
 
   return (
-    <div className="charts-grid">
-      <div className="chart-card span-2">
-        <InfoTip text="Counts at each hiring stage, using the same rules as the KPI cards. Pipeline, Selected, Offers Released, Offers Accepted, and Joined do not share a person." />
-        <h3><IconChart /> Recruitment Funnel</h3>
-        {funnelHasData ? (
-          <div className="funnel-stack">
-            {funnel.map((d, i) => (
-              <div
-                className="funnel-stage"
-                key={d.stage}
-                style={{ width: `${100 - i * 10}%` }}
-              >
-                <span className="funnel-stage-name">{d.stage}</span>
-                <strong className="funnel-stage-val">{d.value}</strong>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="progress-empty">No data found.</div>
-        )}
-      </div>
+    <div className="dc-dashboard-grid">
+      {/* Position Overview */}
+      <section className="dc-card dc-position-card">
+        <div className="dc-card-header">
+          <div className="dc-heading-group">
+            <span className="dc-heading-icon dc-icon-blue">
+              <IconBar />
+            </span>
 
-      {funnelHasData && (
-        <div className="chart-card span-2">
-          <InfoTip text="The same stage counts as the funnel, drawn as bars. Each bar is the number of people at that stage, not a percentage moving from one stage to the next." />
-          <h3><IconTrending /> Stage conversion</h3>
-          <DownloadExcelButton
-            filename="stage-conversion"
-            rows={conversion}
-            columns={[
-              { label: 'Stage', key: 'name' },
-              { label: 'Count', key: 'value' },
-            ]}
-          />
-          <div className="stage-value-row" aria-hidden="true">
-            <span />
-            {conversion.map((stage) => (
-              <strong key={stage.name}>{stage.value}</strong>
-            ))}
+            <div>
+              <h3>Position Overview</h3>
+              <p>Client-wise position breakdown</p>
+            </div>
           </div>
-          <div className="chart-plot">
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={conversion} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                <CartesianGrid stroke={colors.grid} strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: colors.muted, fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fill: colors.muted, fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={40}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(14, 165, 233, 0.08)' }} />
-                <Bar dataKey="value" fill={colors.primary} radius={[6, 6, 0, 0]} maxBarSize={42} isAnimationActive={!reduceMotion()} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="dc-position-toolbar">
+         
+
+          <DownloadExcelButton
+            filename={
+              positionTab === 'open'
+                ? 'open-positions-on-client'
+                : 'closed-positions-on-client'
+            }
+            rows={activeExportData}
+            columns={positionColumns}
+          />
+        </div>
+
+          <InfoTip text="View open and closed positions grouped by client. Use the tabs to switch between the two views." />
+        </div>
+
+      <div className="dc-tabs" role="tablist" aria-label="Position type">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={positionTab === 'open'}
+              className={`dc-tab ${positionTab === 'open' ? 'active open' : ''}`}
+              onClick={() => setPositionTab('open')}
+            >
+              Open
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={positionTab === 'closed'}
+              className={`dc-tab ${positionTab === 'closed' ? 'active closed' : ''}`}
+              onClick={() => setPositionTab('closed')}
+            >
+              Closed
+            </button>
+          </div>
+
+        <div className="dc-position-summary">
+          <div>
+            <span className="dc-summary-label">
+              {positionTab === 'open' ? 'Open Positions' : 'Closed Positions'}
+            </span>
+
+            <strong>{activeTotal}</strong>
+          </div>
+
+          <span
+            className={`dc-status-pill ${
+              positionTab === 'open' ? 'is-open' : 'is-closed'
+            }`}
+          >
+            <span />
+            {positionTab === 'open' ? 'Active' : 'Filled'}
+          </span>
+        </div>
+
+        <ClientBarChart
+          data={activeData}
+          color={activeColor}
+          empty="No position data found."
+        />
+
+        <div className="dc-card-footnote">
+          Showing top {activeData.length} of {activeExportData.length} clients
+        </div>
+      </section>
+
+      {/* Combined Requirement RAG + Position Status */}
+      <section className="dc-card dc-status-card">
+        <div className="dc-card-header">
+          <div className="dc-heading-group">
+            <span className="dc-heading-icon dc-icon-purple">
+              <IconPie />
+            </span>
+
+            <div>
+              <h3>Requirement &amp; Position Status</h3>
+              <p>Requirement health and fulfilment</p>
+            </div>
+          </div>
+
+          <InfoTip text="Requirement RAG shows the handoff health of active requirements. Position Status shows the split between open and closed positions." />
+        </div>
+
+        <div className="dc-status-grid">
+          <div className="dc-status-section">
+            <div className="dc-status-section-heading">
+              <div>
+                <h4>Requirement RAG</h4>
+                <span>{ragTotal} requirements</span>
+              </div>
+            </div>
+
+            <CompactDonut
+              data={rag}
+              total={ragTotal}
+              centerLabel="Reqs"
+            />
+          </div>
+
+          <div className="dc-status-section">
+            <div className="dc-status-section-heading">
+              <div>
+                <h4>Position Status</h4>
+                <span>{statusTotal} positions</span>
+              </div>
+            </div>
+
+            <CompactDonut
+              data={status}
+              total={statusTotal}
+              centerLabel="Positions"
+            />
           </div>
         </div>
+      </section>
+
+      {/* Compact Stage Conversion */}
+      {funnelHasData && (
+        <section className=" dc-stage-card">
+          <div className="dc-card-header">
+            <div className="dc-heading-group">
+              <span className="dc-heading-icon dc-icon-teal">
+                <IconTrending />
+              </span>
+
+              <div>
+                <h3>Stage Conversion</h3>
+                <p>Candidate movement across hiring stages</p>
+              </div>
+            </div>
+            <div className="dc-stage-toolbar" style={{marginRight:"20px"}}>
+            {/* <div className="dc-stage-metrics">
+              {conversion.map((item) => (
+                <div className="dc-stage-metric" key={item.name}>
+                  <span>{item.name}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div> */}
+
+            <DownloadExcelButton
+              filename="stage-conversion"
+              rows={conversion}
+              columns={[
+                { label: 'Stage', key: 'name' },
+                { label: 'Count', key: 'value' },
+              ]}
+            />
+          </div>
+
+            <InfoTip text="The chart shows the total number of candidates at each stage. Counts are not conversion percentages." />
+          </div>
+
+          
+
+          <StageConversionChart data={conversion} />
+        </section>
       )}
-
-      <div className="chart-card">
-        <InfoTip text="Unfilled seats grouped by client. Cancelled requirements are not included. A client is listed when it still has at least one open seat." />
-        <h3><IconBar /> Open Positions on Client</h3>
-        <DownloadExcelButton
-          filename="open-positions-on-client"
-          rows={openByClientExport}
-          columns={[
-            { label: 'Client', key: 'client' },
-            { label: 'Open Positions', key: 'value' },
-          ]}
-        />
-        <ClientBarChart data={openByClient} color={colors.success} empty="No data found." />
-      </div>
-
-      <div className="chart-card">
-        <InfoTip text="People whose onboarding status is Joined, grouped by client. When more than six clients have joined people, the chart shows the six with the most." />
-        <h3><IconBar /> Closed Positions on Client</h3>
-        <DownloadExcelButton
-          filename="closed-positions-on-client"
-          rows={closedByClientExport}
-          columns={[
-            { label: 'Client', key: 'client' },
-            { label: 'Closed Positions', key: 'value' },
-          ]}
-        />
-        <ClientBarChart data={closedByClient} color={colors.danger} empty="No data found." />
-      </div>
-
-      <div className="chart-card">
-        <InfoTip text="TA handoff timing. Green is 2 days or less from the requirement date to handoff, Amber is 3 to 5 days, and Red is longer. If handoff has not happened, the age runs to today. After handoff, the age stays at the handoff date. Closed and Cancelled requirements are not included." />
-        <h3><IconPie /> Requirement RAG</h3>
-        <DonutChart data={rag} centerLabel="Reqs" total={ragTotal} />
-      </div>
-
-      <div className="chart-card">
-        <InfoTip text="Open is unfilled seats on requirements that are not Cancelled. Closed is one count per person whose onboarding status is Joined. These match the Open Positions and Closed Positions cards." />
-        <h3><IconPie /> Position Status</h3>
-        <DonutChart data={status} centerLabel="Positions" total={statusTotal} />
-      </div>
     </div>
   );
 }

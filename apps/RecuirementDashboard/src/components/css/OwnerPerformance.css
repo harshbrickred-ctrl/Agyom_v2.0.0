@@ -1,0 +1,446 @@
+
+/* =====================================================
+   OWNER PERFORMANCE DASHBOARD
+   Light / Dark theme
+   All classes prefixed with op-
+===================================================== */
+
+/* ---------- Light theme ---------- */
+
+:root {
+  --op-card-bg: #ffffff;
+  --op-card-border: #e6ebf1;
+  --op-card-shadow: 0 3px 14px rgba(15, 23, 42, 0.045);
+
+  --op-heading: #172033;
+  --op-text: #344054;
+  --op-muted: #8490a2;
+
+  --op-soft-bg: #f7f9fc;
+  --op-hover-bg: #f0f4f8;
+  --op-grid: #e8edf3;
+  --op-divider: #edf0f4;
+
+  
+  --op-primary: #ff4c4c;
+  --op-primary-soft: #ffeeeed4;
+
+  --op-position: #38bdf8;
+  --op-sourced: #e0b44a;
+  --op-selected: #34d399;
+
+  --op-table-head: #f7f9fc;
+  --op-table-total: #eef2ff;
+
+  --op-tooltip-bg: #172033;
+  --op-tooltip-text: #ffffff;
+}
+
+/* ---------- Dark / black theme ---------- */
+
+:root[data-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"],
+[data-theme="dark"],
+.dark {
+  --op-card-bg: #151a23;
+  --op-card-border: #293341;
+  --op-card-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+
+  --op-heading: #f1f5f9;
+  --op-text: #d5deea;
+  --op-muted: #91a0b2;
+
+  --op-soft-bg: #1c2430;
+  --op-hover-bg: #253140;
+  --op-grid: #2c3745;
+  --op-divider: #293341;
+
+  --op-primary: #8290ff;
+  --op-primary-soft: rgba(99, 102, 241, 0.14);
+
+  --op-position: #38bdf8;
+  --op-sourced: #e9bd55;
+  --op-selected: #34d399;
+
+  --op-table-head: #1c2430;
+  --op-table-total: rgba(99, 102, 241, 0.12);
+
+  --op-tooltip-bg: #080c12;
+  --op-tooltip-text: #f8fafc;
+}
+
+/* ---------- Main layout ---------- */
+
+.op-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  margin-top: 15px;
+}
+
+.op-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+}
+
+/* ---------- Card ---------- */
+
+.op-card {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--op-card-border);
+  border-radius: 13px;
+  background: var(--op-card-bg);
+  box-shadow: var(--op-card-shadow);
+  color: var(--op-text);
+  cursor:pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+/* 
+.op-card:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--op-card-border) 65%,
+    var(--op-primary)
+  );
+} */
+
+/* ---------- Card header ---------- */
+
+.op-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.op-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.op-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 33px;
+  width: 33px;
+  height: 33px;
+  border-radius: 9px;
+  background: var(--op-primary-soft);
+  color: var(--op-primary);
+}
+
+.op-card-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.op-card-title-content {
+  min-width: 0;
+}
+
+.op-card-title-content h3 {
+  margin: 0;
+  color: var(--op-heading);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.2px;
+}
+
+.op-card-title-content p {
+  margin: 3px 0 0;
+  color: var(--op-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* ---------- Toolbar ---------- */
+
+.op-card-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  margin-bottom: 8px;
+}
+
+.op-owner-count {
+  color: var(--op-muted);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+/* ---------- Chart ---------- */
+
+.op-chart-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.op-chart-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--op-card-border) transparent;
+}
+
+.op-chart-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.op-chart-scroll::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: var(--op-card-border);
+}
+
+.op-chart-inner {
+  min-height: 235px;
+}
+
+.op-chart-inner .recharts-wrapper,
+.op-chart-inner .recharts-surface {
+  overflow: visible;
+}
+
+.op-chart-inner .recharts-cartesian-axis-tick-value {
+  font-family: inherit;
+}
+
+.op-chart-inner .recharts-legend-item-text {
+  color: var(--op-muted) !important;
+  font-size: 10px;
+}
+
+.op-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  color: var(--op-muted);
+  font-size: 12px;
+}
+
+
+
+/* ---------- Summary table ---------- */
+
+.op-summary-card {
+  width: 100%;
+  min-width: 0;
+}
+
+.op-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--op-divider);
+  border-radius: 9px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--op-card-border) transparent;
+}
+
+.op-table-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.op-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: var(--op-card-border);
+}
+
+.op-table {
+  width: 100%;
+  min-width: 850px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--op-text);
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.op-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--op-divider);
+  background: var(--op-table-head);
+  color: var(--op-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.15px;
+}
+
+.op-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--op-divider);
+  color: var(--op-text);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.op-table tbody tr {
+  transition: background-color 150ms ease;
+}
+
+.op-table tbody tr:hover {
+  background: var(--op-hover-bg);
+}
+
+.op-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.op-table th:first-child,
+.op-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 130px;
+  background: var(--op-card-bg);
+}
+
+.op-table thead th:first-child {
+  z-index: 2;
+  background: var(--op-table-head);
+}
+
+.op-table tbody tr:hover td:first-child {
+  background: var(--op-hover-bg);
+}
+
+.op-owner-name {
+  color: var(--op-heading);
+  font-weight: 650;
+}
+
+.op-table tfoot td {
+  border-top: 1px solid var(--op-card-border);
+  border-bottom: 0;
+  background: var(--op-table-total);
+  color: var(--op-heading);
+  font-weight: 750;
+}
+
+/* ---------- Download button ---------- */
+
+.op-card-toolbar button {
+  min-height: 29px;
+  padding: 5px 10px;
+  border: 1px solid var(--op-card-border);
+  border-radius: 7px;
+  background: var(--op-card-bg);
+  color: var(--op-text);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.op-card-toolbar button:hover {
+  border-color: var(--op-primary);
+  background: var(--op-primary-soft);
+  color: var(--op-primary);
+}
+/* Custom chart tooltip */
+.op-tooltip {
+  min-width: 160px;
+  padding: 10px 12px;
+  border: 1px solid var(--op-card-border);
+  border-radius: 9px;
+  background: var(--op-tooltip-bg);
+  color: var(--op-tooltip-text);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.15);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.op-tooltip > strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.op-tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.op-tooltip-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.op-tooltip-row span:nth-child(2) {
+  flex: 1;
+  opacity: 0.85;
+}
+
+.op-tooltip-row strong {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1000px) {
+  .op-chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .op-dashboard {
+    gap: 12px;
+  }
+
+  .op-card {
+    padding: 13px;
+    border-radius: 11px;
+  }
+
+  .op-card-title-content h3 {
+    font-size: 13px;
+  }
+
+  .op-card-title-content p {
+    font-size: 10px;
+  }
+
+  .op-card-header {
+    margin-bottom: 10px;
+  }
+
+  .op-chart-inner {
+    min-height: 220px;
+  }
+
+  .op-table {
+    min-width: 800px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-card,
+  .op-table tbody tr,
+  .op-card-toolbar button {
+    transition: none;
+  }
+}

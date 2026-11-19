@@ -1,7 +1,15 @@
+
 import {
-  IconBriefcase, IconFolderOpen, IconUsers, IconCheckCircle, IconUserCheck, IconXCircle,
-  IconClipboardCheck, IconChart,
+  IconBriefcase,
+  IconFolderOpen,
+  IconUsers,
+  IconCheckCircle,
+  IconUserCheck,
+  IconXCircle,
+  IconClipboardCheck,
+  IconChart,
 } from './Icons';
+
 import InfoTip from './InfoTip';
 
 const RISK_KPI = new Set([
@@ -12,26 +20,26 @@ const RISK_KPI = new Set([
 ]);
 
 const KPI_META = {
-  totalRequirements: { Icon: IconBriefcase, target: 100 },
-  activeRequirements: { Icon: IconBriefcase, target: 100 },
-  onHoldRequirements: { Icon: IconClipboardCheck, target: 50 },
-  totalPositions: { Icon: IconFolderOpen, target: 200 },
-  openPositions: { Icon: IconFolderOpen, target: 150 },
-  closedPositions: { Icon: IconFolderOpen, target: 100 },
-  pendingSalesHandoff: { Icon: IconClipboardCheck, target: 50 },
-  candidatesInPipeline: { Icon: IconUsers, target: 120 },
-  selectedCandidates: { Icon: IconUserCheck, target: 20 },
-  duplicateMobiles: { Icon: IconXCircle, target: 20 },
-  offersReleased: { Icon: IconCheckCircle, target: 20 },
-  offersAccepted: { Icon: IconUserCheck, target: 20 },
-  candidatesJoined: { Icon: IconUserCheck, target: 20 },
-  fillRate: { Icon: IconChart, target: 100 },
-  averageDaysToFill: { Icon: IconChart, target: 100 },
-  requirementsAtRisk: { Icon: IconXCircle, target: 20 },
-  cancelledRequirements: { Icon: IconXCircle, target: 20 },
-  wastedSourcing: { Icon: IconXCircle, target: 20 },
-  overdueRequirements: { Icon: IconXCircle, target: 20 },
-  offersRejected: { Icon: IconXCircle, target: 40 },
+  totalRequirements: { Icon: IconBriefcase },
+  activeRequirements: { Icon: IconBriefcase },
+  onHoldRequirements: { Icon: IconClipboardCheck },
+  totalPositions: { Icon: IconFolderOpen },
+  openPositions: { Icon: IconFolderOpen },
+  closedPositions: { Icon: IconFolderOpen },
+  pendingSalesHandoff: { Icon: IconClipboardCheck },
+  candidatesInPipeline: { Icon: IconUsers },
+  selectedCandidates: { Icon: IconUserCheck },
+  duplicateMobiles: { Icon: IconXCircle },
+  offersReleased: { Icon: IconCheckCircle },
+  offersAccepted: { Icon: IconUserCheck },
+  candidatesJoined: { Icon: IconUserCheck },
+  fillRate: { Icon: IconChart },
+  averageDaysToFill: { Icon: IconChart },
+  requirementsAtRisk: { Icon: IconXCircle },
+  cancelledRequirements: { Icon: IconXCircle },
+  wastedSourcing: { Icon: IconXCircle },
+  overdueRequirements: { Icon: IconXCircle },
+  offersRejected: { Icon: IconXCircle },
 };
 
 const KPI_LABELS = {
@@ -58,109 +66,175 @@ const KPI_LABELS = {
 };
 
 const KPI_INFO = {
-  totalRequirements: 'Active, On Hold, and Cancelled requirements. Closed requirements are not included.',
-  activeRequirements: 'Requirements whose status is Active.',
-  onHoldRequirements: 'Requirements whose status is On Hold.',
-  cancelledRequirements: 'Requirements whose status is Cancelled.',
-  totalPositions: 'Sum of seats on every requirement that is not Cancelled.',
-  openPositions: 'Unfilled seats on requirements that are not Cancelled. People who joined are capped at the seat count.',
-  closedPositions: 'One count for each person whose onboarding status is Joined.',
-  candidatesInPipeline: 'Candidates who have not been selected.',
-  selectedCandidates: 'Selected candidates who are not yet in a released offer, an accepted offer, or joined.',
-  offersReleased: 'Offers whose status is Released.',
-  offersAccepted: 'Offers whose status is Accepted, where the person has not joined.',
-  candidatesJoined: 'People whose onboarding status is Joined. This is the same group as Closed Positions, counted here as a hiring stage.',
-  overdueRequirements: 'The target closure date is in the past and the requirement still has an open seat. On Hold and Cancelled requirements are not overdue.',
-  wastedSourcing: 'Cancelled requirements that already had a TA handoff date or at least one candidate.',
+  totalRequirements:
+    'Active, On Hold, and Cancelled requirements. Closed requirements are not included.',
+  activeRequirements:
+    'Requirements whose status is Active.',
+  onHoldRequirements:
+    'Requirements whose status is On Hold.',
+  cancelledRequirements:
+    'Requirements whose status is Cancelled.',
+  totalPositions:
+    'Sum of seats on every requirement that is not Cancelled.',
+  openPositions:
+    'Unfilled seats on requirements that are not Cancelled. People who joined are capped at the seat count.',
+  closedPositions:
+    'One count for each person whose onboarding status is Joined.',
+  candidatesInPipeline:
+    'Candidates who have not been selected.',
+  selectedCandidates:
+    'Selected candidates who are not yet in a released offer, an accepted offer, or joined.',
+  offersReleased:
+    'Offers whose status is Released.',
+  offersAccepted:
+    'Offers whose status is Accepted, where the person has not joined.',
+  candidatesJoined:
+    'People whose onboarding status is Joined. This is the same group as Closed Positions, counted here as a hiring stage.',
+  overdueRequirements:
+    'The target closure date is in the past and the requirement still has an open seat. On Hold and Cancelled requirements are not overdue.',
+  wastedSourcing:
+    'Cancelled requirements that already had a TA handoff date or at least one candidate.',
 };
 
 function formatKpiValue(label, value) {
-  if (value === null || value === undefined || value === '') return '—';
+  if (value === null || value === undefined || value === '') {
+    return '—';
+  }
+
   if (typeof value === 'number' && Number.isFinite(value)) {
-    if (label.toLowerCase().includes('rate')) return `${value}%`;
+    if (label.toLowerCase().includes('rate')) {
+      return `${value}%`;
+    }
     return value;
   }
+
   return value;
 }
 
 function getKpiLabel(kpi) {
   if (kpi.title) return kpi.title;
   if (kpi.name) return kpi.name;
+
   return KPI_LABELS[kpi.label] || kpi.label || 'KPI';
 }
 
-export default function KpiCards({ kpis = [], onCardClick, heroLabels }) {
-  const renderCard = (k, featured = false) => {
-    const label = k.label || k.name || k.key || `kpi-${Math.random().toString(36).slice(2, 8)}`;
+export default function KpiCards({
+  kpis = [],
+  onCardClick,
+  heroLabels,
+}) {
+  const renderCard = (k) => {
+    const label = k.label || k.name || k.key || 'unknown';
     const Icon = KPI_META[label]?.Icon || IconBriefcase;
-    const tone = RISK_KPI.has(label) ? ' kpi-card-risk' : '';
-    const size = featured ? ' kpi-card-hero' : ' kpi-card-compact';
+    const isRisk = RISK_KPI.has(label);
     const info = KPI_INFO[label];
 
     return (
       <div
-        className={`kpi-card${tone}${size}`}
+        className={`metric-item ${isRisk ? 'metric-item-risk' : ''} ${
+          onCardClick ? 'metric-item-clickable' : ''
+        }`}
         key={label}
         role={onCardClick ? 'button' : undefined}
         tabIndex={onCardClick ? 0 : undefined}
-        onClick={() => onCardClick && onCardClick(label)}
+        onClick={() => onCardClick?.(label)}
         onKeyDown={(e) => {
           if (!onCardClick) return;
+
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             onCardClick(label);
           }
         }}
       >
-        <span className="kpi-icon"><Icon /></span>
-        <div className="kpi-copy">
-          <span className="kpi-value">{formatKpiValue(label, k.value)}</span>
-          <span className="kpi-label">{getKpiLabel(k)}</span>
+        <span className="metric-item-icon">
+          <Icon />
+        </span>
+
+        <div className="metric-item-content">
+          <span className="metric-item-value">
+            {formatKpiValue(label, k.value)}
+          </span>
+
+          <span className="metric-item-label">
+            {getKpiLabel(k)}
+          </span>
         </div>
-        {info && <InfoTip text={info} label="How this number is calculated" />}
+
+        {info && (
+          <div
+            className="metric-item-info"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <InfoTip
+              text={info}
+              label="How this number is calculated"
+            />
+          </div>
+        )}
       </div>
     );
   };
 
   if (Array.isArray(heroLabels) && heroLabels.length) {
     const heroSet = new Set(heroLabels);
+
     const hero = kpis.filter((k) => heroSet.has(k.label));
     const rest = kpis.filter((k) => !heroSet.has(k.label));
+
     return (
-      <div className="kpi-stack">
-        <div className="kpi-section">
-          <h2 className="kpi-section-title">
-            Key metrics
+      <div className="metric-dashboard">
+
+        {/* Key Metrics */}
+        <details className="metric-panel" open>
+          <summary className="metric-panel-header">
+            <span>Key Metrics</span>
+
             <InfoTip
               inline
               text="Requirement status counts and seat counts. Closed requirements are excluded from Total Requirements. Each card explains its own count."
             />
-          </h2>
-          <div className="kpi-grid kpi-grid-hero">
-            {hero.map((k) => renderCard(k, true))}
+
+            <span className="metric-panel-count">
+              {hero.length}
+            </span>
+          </summary>
+
+          <div className="metric-panel-grid">
+            {hero.map(renderCard)}
           </div>
-        </div>
+        </details>
+
+        {/* More Metrics */}
         {rest.length > 0 && (
-          <details className="kpi-more" open>
-            <summary>
-              More metrics
+          <details className="metric-panel">
+            <summary className="metric-panel-header">
+              <span>More Metrics</span>
+
               <InfoTip
                 inline
                 text="Hiring-stage counts, overdue requirements, and wasted sourcing. Pipeline, Selected, Offers Released, Offers Accepted, and Joined do not share a person. Each card explains its own count."
               />
+
+              <span className="metric-panel-count">
+                {rest.length}
+              </span>
             </summary>
-            <div className="kpi-grid kpi-grid-compact">
-              {rest.map((k) => renderCard(k, false))}
+
+            <div className="metric-panel-grid">
+              {rest.map(renderCard)}
             </div>
           </details>
         )}
+
       </div>
     );
   }
 
   return (
-    <div className="kpi-grid">
-      {kpis.map((k) => renderCard(k, false))}
+    <div className="metric-panel-grid">
+      {kpis.map(renderCard)}
     </div>
   );
 }

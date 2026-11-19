@@ -267,6 +267,7 @@ export default function Dashboard() {
     profileSubmittedFrom: '',
     profileSubmittedTo: '',
   });
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [modalKpi, setModalKpi] = useState(null); // { label, rows }
   const [openPositionsOnClient, setOpenPositionsOnClient] = useState(null);
   const [closedPositionsOnClient, setClosedPositionsOnClient] = useState(null);
@@ -479,6 +480,7 @@ export default function Dashboard() {
         <div className="sidebar-brand">
           <Logo size={40} />
         </div>
+        <span className="role-pill">{USER_TYPE_LABELS[userType]}</span>
 
         <nav className="sidebar-nav">
           <button
@@ -532,12 +534,11 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="main">
+
+      <div className="main-dashboard">
         <header className="topbar">
           <div className="topbar-title">
             <h1>{activeTab === 'overview' ? 'Recruitment Overview' : activeTab === 'work' ? 'My Work' : activeTab === 'add' ? 'Add Request' : activeTab === 'your' ? 'Requirements' : activeTab === 'lead-assign' ? 'Assign Requirements' : activeTab === 'assign' ? 'Assign Task' : activeTab === 'hr-offers' ? 'Offer' : activeTab === 'hr-onboarding' ? 'Onboarding' : activeTab === 'users' ? 'Users' : `${roleScreen?.label} Workspace`}</h1>
-            <span className="role-pill">{USER_TYPE_LABELS[userType]}</span>
           </div>
           <div className="topbar-meta">
             <NotificationBell />
@@ -548,87 +549,96 @@ export default function Dashboard() {
             </button>
           </div>
         </header>
+        {/* Main content */}
+        <main className="main">
 
-        {activeTab === 'overview' ? (
-          loading ? (
-            <ScreenSkeleton cards={8} rows={4} />
+
+          {activeTab === 'overview' ? (
+            loading ? (
+              <ScreenSkeleton cards={8} rows={4} />
+            ) : (
+              <>
+                <FilterBar
+                  rows={rows}
+                  filters={filters}
+                  onChange={setFilters}
+                  options={{
+                    taOwner: taOwnerOptions,
+                    salesOwner: salesOwnerOptions,
+                    client: clientOptions,
+                    jobFamily: jobFamilyOptions,
+                    priority: ['HIGH', 'MEDIUM', 'LOW'],
+                  }}
+                  isExpanded={isFilterExpanded}
+                  onToggle={() => setIsFilterExpanded(prev => !prev)}
+                />
+                <KpiCards
+                  kpis={displayedKpisFiltered}
+                  heroLabels={HERO_KPI_LABELS}
+                  onCardClick={(label) => {
+                    const listName = KPI_LIST_MAP[label];
+                    let listRows = listName && Array.isArray(dashboardLists[listName])
+                      ? dashboardLists[listName]
+                      : filteredRows;
+                    if (label === 'activeRequirements') {
+                      listRows = (dashboardLists.requirements || []).filter((row) => row.status === 'ACTIVE');
+                    } else if (label === 'onHoldRequirements') {
+                      listRows = (dashboardLists.requirements || []).filter((row) => row.status === 'ON_HOLD');
+                    } else if (label === 'totalRequirements') {
+                      listRows = (dashboardLists.requirements || []).filter((row) =>
+                        row.status === 'ACTIVE' || row.status === 'ON_HOLD' || row.status === 'CANCELLED',
+                      );
+                    }
+                    setModalKpi({ label, rows: listRows, listKey: listName || null });
+                  }}
+                />
+                <DashboardCharts
+                  rows={filteredRows}
+                  kpis={kpis}
+                  openPositionsOnClient={openPositionsOnClient}
+                  closedPositionsOnClient={closedPositionsOnClient}
+                  requirementRagSummary={requirementRagSummary}
+                />
+                {userType === 'admin' && (
+                  
+                  <OwnerPerformance data={ownerPerformance} />
+                )}
+                {/* <DataTable rows={filteredRows} variant="full" /> */}
+              </>
+            )
+          ) : activeTab === 'work' ? (
+            <MyWorkScreen />
+          ) : activeTab === 'add' ? (
+            // Add request form
+            <AddRequestScreen />
+          ) : activeTab === 'your' ? (
+            // List of requirements the user has added
+            <YourRequirementsScreen />
+          ) : activeTab === 'lead-assign' ? (
+            <TaLeadAssignScreen />
+          ) : activeTab === 'assign' ? (
+            // Assign task screen
+            <AssignTaskScreen />
+          ) : activeTab === 'mytasks' ? (
+            <MyTasksScreen />
+          ) : activeTab === 'hr-offers' ? (
+            <OffersScreen />
+          ) : activeTab === 'hr-onboarding' ? (
+            <HrCandidatesScreen />
+          ) : activeTab === 'users' ? (
+            <UsersScreen />
           ) : (
-            <>
-              <FilterBar
-                rows={rows}
-                filters={filters}
-                onChange={setFilters}
-                options={{
-                  taOwner: taOwnerOptions,
-                  salesOwner: salesOwnerOptions,
-                  client: clientOptions,
-                  jobFamily: jobFamilyOptions,
-                  priority: ['HIGH', 'MEDIUM', 'LOW'],
-                }}
-              />
-              <KpiCards
-                kpis={displayedKpisFiltered}
-                heroLabels={HERO_KPI_LABELS}
-                onCardClick={(label) => {
-                  const listName = KPI_LIST_MAP[label];
-                  let listRows = listName && Array.isArray(dashboardLists[listName])
-                    ? dashboardLists[listName]
-                    : filteredRows;
-                  if (label === 'activeRequirements') {
-                    listRows = (dashboardLists.requirements || []).filter((row) => row.status === 'ACTIVE');
-                  } else if (label === 'onHoldRequirements') {
-                    listRows = (dashboardLists.requirements || []).filter((row) => row.status === 'ON_HOLD');
-                  } else if (label === 'totalRequirements') {
-                    listRows = (dashboardLists.requirements || []).filter((row) =>
-                      row.status === 'ACTIVE' || row.status === 'ON_HOLD' || row.status === 'CANCELLED',
-                    );
-                  }
-                  setModalKpi({ label, rows: listRows, listKey: listName || null });
-                }}
-              />
-              <DashboardCharts
-                rows={filteredRows}
-                kpis={kpis}
-                openPositionsOnClient={openPositionsOnClient}
-                closedPositionsOnClient={closedPositionsOnClient}
-                requirementRagSummary={requirementRagSummary}
-              />
-              {userType === 'admin' && (
-                <OwnerPerformance data={ownerPerformance} />
-              )}
-              {/* <DataTable rows={filteredRows} variant="full" /> */}
-            </>
-          )
-        ) : activeTab === 'work' ? (
-          <MyWorkScreen />
-        ) : activeTab === 'add' ? (
-          // Add request form
-          <AddRequestScreen />
-        ) : activeTab === 'your' ? (
-          // List of requirements the user has added
-          <YourRequirementsScreen />
-        ) : activeTab === 'lead-assign' ? (
-          <TaLeadAssignScreen />
-        ) : activeTab === 'assign' ? (
-          // Assign task screen
-          <AssignTaskScreen />
-        ) : activeTab === 'mytasks' ? (
-          <MyTasksScreen />
-        ) : activeTab === 'hr-offers' ? (
-          <OffersScreen />
-        ) : activeTab === 'hr-onboarding' ? (
-          <HrCandidatesScreen />
-        ) : activeTab === 'users' ? (
-          <UsersScreen />
-        ) : (
-          // Render the role-specific screen (each hits its own API endpoint)
-          <roleScreen.Component />
-        )}
+            // Render the role-specific screen (each hits its own API endpoint)
+            <roleScreen.Component />
+          )}
 
-        {modalKpi && (
-          <KpiModal kpi={modalKpi} onClose={() => setModalKpi(null)} />
-        )}
-      </main>
+          {modalKpi && (
+            <KpiModal kpi={modalKpi} onClose={() => setModalKpi(null)} />
+          )}
+        </main>
+      </div>
+
+
     </div>
   );
 }

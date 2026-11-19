@@ -34,6 +34,7 @@ import YourRequirementsScreen from './roles/YourRequirementsScreen';
 import MyTasksScreen from './roles/MyTasksScreen';
 import TaLeadAssignScreen from './roles/TaLeadAssignScreen';
 import MyWorkScreen from './roles/MyWorkScreen';
+import RequirementPipelineBoard from '../components/RequirementPipelineBoard';
 
 // Map each user type to the screen component it can visit.
 // (Admin has no dedicated tab — "Add request" replaces it.)
@@ -102,6 +103,7 @@ const KPI_DISPLAY_LABELS = [
   'totalRequirements',
   'activeRequirements',
   'onHoldRequirements',
+  'closedRequirements',
   'cancelledRequirements',
   'totalPositions',
   'openPositions',
@@ -119,6 +121,7 @@ const KPI_LIST_MAP = {
   totalRequirements: 'requirements',
   activeRequirements: 'requirements',
   onHoldRequirements: 'requirements',
+  closedRequirements: 'closedRequirements',
   totalPositions: 'totalPositions',
   openPositions: 'openPositions',
   closedPositions: 'closedPositions',
@@ -138,6 +141,7 @@ const KPI_LABELS = {
   totalRequirements: 'Total Requirements',
   activeRequirements: 'Active Requirements',
   onHoldRequirements: 'On Hold Requirements',
+  closedRequirements: 'Closed Requirements',
   totalPositions: 'No. of Positions',
   openPositions: 'Open Positions',
   closedPositions: 'Closed Positions',
@@ -173,6 +177,7 @@ function computeKpis(rows) {
     offersAccepted: rows.reduce((s, r) => s + (r.offersAccepted || 0), 0),
     candidatesJoined: rows.reduce((s, r) => s + (r.candidatesJoined || 0), 0),
     cancelledRequirements: rows.reduce((s, r) => s + (r.cancelledRequirements || 0), 0),
+    closedRequirements: rows.reduce((s, r) => s + (r.closedRequirements || 0), 0),
     overdueRequirements: rows.reduce((s, r) => s + (r.overdueRequirements || 0), 0),
     wastedSourcing: rows.reduce((s, r) => s + (r.wastedSourcing || 0), 0),
     offersRejected: rows.reduce((s, r) => s + (r.offersRejected || 0), 0),
@@ -219,6 +224,7 @@ function attachKpiPercentages(kpis) {
       'totalRequirements',
       'activeRequirements',
       'onHoldRequirements',
+      'closedRequirements',
       'cancelledRequirements',
       'totalPositions',
     ].includes(kpi.label);
@@ -234,6 +240,7 @@ const HERO_KPI_LABELS = [
   'totalRequirements',
   'activeRequirements',
   'onHoldRequirements',
+  'closedRequirements',
   'cancelledRequirements',
   'totalPositions',
   'openPositions',
@@ -675,8 +682,19 @@ const CANDIDATE_LIST_KEYS = new Set([
   'closedPositions',
 ]);
 
+const REQUIREMENT_PIPELINE_LIST_KEYS = new Set([
+  'requirements',
+  'closedRequirements',
+  'cancelledRequirements',
+  'requirementsAtRisk',
+  'overdueRequirements',
+  'wastedSourcing',
+  'pendingSalesHandoff',
+]);
+
 const KPI_COLUMN_LABELS = {
   candidateName: 'Candidate Name',
+  sourcedBy: 'Sourced By TA',
   taOwners: 'TA Owners',
   salesOwner: 'Sales Owner',
   profileSubmittedDate: 'Profile Submitted',
@@ -687,6 +705,7 @@ const KPI_COLUMN_PRIORITY = [
   'publicId',
   'candidateName',
   'name',
+  'sourcedBy',
   'taOwners',
   'salesOwner',
   'profileSubmittedDate',
@@ -715,8 +734,10 @@ function enrichKpiRows(rows, listKey) {
 
 function KpiModal({ kpi, onClose }) {
   const [search, setSearch] = useState('');
+  const [pipelineReq, setPipelineReq] = useState(null);
   const key = kpi.label;
   const listKey = kpi.listKey;
+  const canOpenPipeline = REQUIREMENT_PIPELINE_LIST_KEYS.has(listKey);
   const items = enrichKpiRows(Array.isArray(kpi.rows) ? kpi.rows : [], listKey);
   const sortedItems = items.slice().sort((a, b) => {
     const aValue = Number(a[key]) || 0;
@@ -739,9 +760,11 @@ function KpiModal({ kpi, onClose }) {
     'salesOwnerId',
     'taOwnerId',
     'hrOwnerId',
+    'sourcedByUserId',
     'mobileNormalized',
     'emailNormalized',
     'taOwner',
+    'taAssignments',
   ]);
   const hasCandidateName = sortedItems.some((row) => row?.candidateName != null && row.candidateName !== '');
   if (hasCandidateName) HIDDEN_KEYS.add('candidate');
@@ -797,62 +820,113 @@ function KpiModal({ kpi, onClose }) {
     matchesKpiRow(search, row, columns, formatCell),
   );
 
+  const openPipeline = (row) => {
+    if (!canOpenPipeline) return;
+    const requirementId = row?.id || row?.requirementId;
+    if (!requirementId) return;
+    setPipelineReq({
+      id: requirementId,
+      publicId: row.publicId,
+      roleSkill: row.roleSkill,
+      status: row.status,
+    });
+  };
+
   return (
-    <Modal
-      open
-      onClose={onClose}
-      size="large"
-      cardClassName="kpi-detail-modal"
-      title={(
-        <>
-          {getKpiLabel({ label: key })}
-          <span className="kpi-modal-count">{sortedItems.length} records</span>
-        </>
-      )}
-    >
-      <DownloadExcelButton
-        filename={getKpiLabel({ label: key })}
-        rows={visibleItems}
-        columns={columns.map((col) => ({
-          label: col.label,
-          value: (row) => formatCell(row[col.key]),
-        }))}
-      />
-      {sortedItems.length === 0 ? (
-        <div className="kpi-modal-empty">No records for this metric.</div>
-      ) : (
-        <>
-          <TableSearch
-            value={search}
-            onChange={setSearch}
-            placeholder="Search this list…"
-          />
-          {visibleItems.length === 0 ? (
-            <div className="kpi-modal-empty">No rows match that search.</div>
-          ) : (
-            <div className="table-wrap kpi-modal-table-wrap">
-              <table className="data-table modal-table">
-                <thead>
-                  <tr>
-                    {columns.map((col) => (
-                      <th key={col.key}>{col.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleItems.map((row) => (
-                    <tr key={row.id || JSON.stringify(row).slice(0, 100)}>
+    <>
+      <Modal
+        open
+        onClose={onClose}
+        size="large"
+        cardClassName="kpi-detail-modal"
+        title={(
+          <>
+            {getKpiLabel({ label: key })}
+            <span className="kpi-modal-count">{sortedItems.length} records</span>
+          </>
+        )}
+      >
+        <DownloadExcelButton
+          filename={getKpiLabel({ label: key })}
+          rows={visibleItems}
+          columns={columns.map((col) => ({
+            label: col.label,
+            value: (row) => formatCell(row[col.key]),
+          }))}
+        />
+        {canOpenPipeline && sortedItems.length > 0 && (
+          <p className="sourcing-hint">Click a requirement row to open its candidate pipeline.</p>
+        )}
+        {sortedItems.length === 0 ? (
+          <div className="kpi-modal-empty">No records for this metric.</div>
+        ) : (
+          <>
+            <TableSearch
+              value={search}
+              onChange={setSearch}
+              placeholder="Search this list…"
+            />
+            {visibleItems.length === 0 ? (
+              <div className="kpi-modal-empty">No rows match that search.</div>
+            ) : (
+              <div className="table-wrap kpi-modal-table-wrap">
+                <table className="data-table modal-table">
+                  <thead>
+                    <tr>
                       {columns.map((col) => (
-                        <td key={col.key}>{formatCell(row[col.key])}</td>
+                        <th key={col.key}>{col.label}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {visibleItems.map((row) => (
+                      <tr
+                        key={row.id || JSON.stringify(row).slice(0, 100)}
+                        className={canOpenPipeline ? 'kpi-row-clickable' : undefined}
+                        role={canOpenPipeline ? 'button' : undefined}
+                        tabIndex={canOpenPipeline ? 0 : undefined}
+                        onClick={() => openPipeline(row)}
+                        onKeyDown={(e) => {
+                          if (!canOpenPipeline) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            openPipeline(row);
+                          }
+                        }}
+                      >
+                        {columns.map((col) => (
+                          <td key={col.key}>{formatCell(row[col.key])}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </Modal>
+      {pipelineReq && (
+        <Modal
+          open
+          onClose={() => setPipelineReq(null)}
+          size="large"
+          cardClassName="kpi-detail-modal"
+          title={(
+            <>
+              Pipeline
+              {pipelineReq.publicId ? ` · ${pipelineReq.publicId}` : ''}
+              {pipelineReq.roleSkill ? ` · ${pipelineReq.roleSkill}` : ''}
+            </>
           )}
-        </>
+        >
+          <RequirementPipelineBoard
+            requirementId={pipelineReq.id}
+            requirement={pipelineReq}
+            mode="readonly"
+          />
+        </Modal>
       )}
-    </Modal>
+    </>
   );
 }

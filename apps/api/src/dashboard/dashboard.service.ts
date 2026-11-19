@@ -174,6 +174,17 @@ export class DashboardService {
     };
   }
 
+  /**
+   * When filtering by TA, attribute candidate/person KPIs to the TA who sourced
+   * the candidate — not every TA assigned to the requirement.
+   */
+  private sourcedByCandidateFilter(
+    query: DashboardQueryDto,
+  ): Prisma.CandidateWhereInput {
+    if (!query.taOwnerId) return {};
+    return { sourcedByUserId: query.taOwnerId };
+  }
+
   /** Candidates in scope for pipeline / selected / sourced metrics. */
   private candidateWhere(
     query: DashboardQueryDto,
@@ -183,6 +194,7 @@ export class DashboardService {
       deletedAt: null,
       requirement: this.requirementDimensions(query),
       ...(profileFilter ?? {}),
+      ...this.sourcedByCandidateFilter(query),
     };
   }
 
@@ -201,6 +213,20 @@ export class DashboardService {
       taOwners,
       salesOwner: requirement?.salesOwner ?? null,
     };
+  }
+
+  private sourcedByFields(sourcedBy: {
+    id: string;
+    fullName: string;
+    email?: string;
+  } | null | undefined) {
+    return sourcedBy
+      ? {
+          id: sourcedBy.id,
+          fullName: sourcedBy.fullName,
+          email: sourcedBy.email,
+        }
+      : null;
   }
 
   async summary(query: DashboardQueryDto) {
@@ -244,6 +270,7 @@ export class DashboardService {
         averageDaysToFill: null,
         requirementsAtRisk: 0,
         cancelledRequirements: 0,
+        closedRequirements: 0,
         wastedSourcing: 0,
         overdueRequirements: 0,
       };
@@ -251,7 +278,13 @@ export class DashboardService {
 
     const candidateScope = this.candidateWhere(query);
     const profileFilter = this.profileSubmittedFilter(query);
-    const offerCandidateScope: Prisma.CandidateWhereInput = {
+    const personCandidateScope: Prisma.CandidateWhereInput = {
+      deletedAt: null,
+      ...(profileFilter ?? {}),
+      ...this.sourcedByCandidateFilter(query),
+    };
+    /** All joins on scoped requirements — used for open-seat math. */
+    const seatCandidateScope: Prisma.CandidateWhereInput = {
       deletedAt: null,
       ...(profileFilter ?? {}),
     };
@@ -264,6 +297,7 @@ export class DashboardService {
       offersRejected,
       duplicateMobileGroups,
       joinedOnboardings,
+      seatJoinedOnboardings,
       sourcedRequirementGroups,
     ] = await Promise.all([
       this.prisma.candidate.count({
@@ -294,7 +328,7 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'RELEASED',
           requirementId: { in: reqIds },
-          candidate: offerCandidateScope,
+          candidate: personCandidateScope,
         },
       }),
       this.prisma.offer.count({
@@ -302,7 +336,7 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'ACCEPTED',
           requirementId: { in: reqIds },
-          candidate: offerCandidateScope,
+          candidate: personCandidateScope,
           NOT: {
             onboarding: { statusCode: 'JOINED', deletedAt: null },
           },
@@ -313,7 +347,7 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'DECLINED',
           requirementId: { in: reqIds },
-          candidate: offerCandidateScope,
+          candidate: personCandidateScope,
         },
       }),
       this.prisma.candidate.groupBy({
@@ -326,9 +360,18 @@ export class DashboardService {
           deletedAt: null,
           statusCode: 'JOINED',
           requirementId: { in: reqIds },
-          candidate: offerCandidateScope,
+          candidate: personCandidateScope,
         },
         select: { requirementId: true, actualDoj: true },
+      }),
+      this.prisma.onboarding.findMany({
+        where: {
+          deletedAt: null,
+          statusCode: 'JOINED',
+          requirementId: { in: reqIds },
+          candidate: seatCandidateScope,
+        },
+        select: { requirementId: true },
       }),
       this.prisma.candidate.groupBy({
         by: ['requirementId'],
@@ -339,8 +382,10 @@ export class DashboardService {
 
     const candidatesJoined = joinedOnboardings.length;
     const closedPositions = candidatesJoined;
+    // Fill rate uses org/requirement seat fills (not TA-attributed person KPI).
+    const seatClosedPositions = seatJoinedOnboardings.length;
     const fillRate =
-      totalPositions > 0 ? closedPositions / totalPositions : 0;
+      totalPositions > 0 ? seatClosedPositions / totalPositions : 0;
     const requirementById = new Map(requirements.map((r) => [r.id, r]));
     const fillDurations = joinedOnboardings
       .map((onboarding) => {
@@ -361,7 +406,7 @@ export class DashboardService {
       sourcedRequirementGroups.map((group) => group.requirementId),
     );
     const joinedByRequirement = new Map<string, number>();
-    for (const onboarding of joinedOnboardings) {
+    for (const onboarding of seatJoinedOnboardings) {
       joinedByRequirement.set(
         onboarding.requirementId,
         (joinedByRequirement.get(onboarding.requirementId) ?? 0) + 1,
@@ -402,6 +447,9 @@ export class DashboardService {
     const cancelled = requirements.filter(
       (requirement) => requirement.status === 'CANCELLED',
     );
+    const closedReqs = requirements.filter(
+      (requirement) => requirement.status === 'CLOSED',
+    );
     const activeRequirements = requirements.filter(
       (requirement) => requirement.status === 'ACTIVE',
     ).length;
@@ -430,6 +478,7 @@ export class DashboardService {
       averageDaysToFill,
       requirementsAtRisk,
       cancelledRequirements: cancelled.length,
+      closedRequirements: closedReqs.length,
       wastedSourcing: cancelled.filter(
         (requirement) =>
           requirement.taHandoffDate != null ||
@@ -476,6 +525,8 @@ export class DashboardService {
       selected: true,
       profileSubmittedDate: true,
       requirementId: true,
+      sourcedByUserId: true,
+      sourcedBy: { select: ownerUserSelect },
       requirement: { select: requirementOwnerSelect },
     };
 
@@ -495,6 +546,8 @@ export class DashboardService {
           name: true,
           email: true,
           profileSubmittedDate: true,
+          sourcedByUserId: true,
+          sourcedBy: { select: ownerUserSelect },
         },
       },
       requirement: { select: requirementOwnerSelect },
@@ -606,6 +659,7 @@ export class DashboardService {
           candidate: {
             deletedAt: null,
             ...(this.profileSubmittedFilter(query) ?? {}),
+            ...this.sourcedByCandidateFilter(query),
           },
         },
         select: offerSelect,
@@ -619,6 +673,7 @@ export class DashboardService {
           candidate: {
             deletedAt: null,
             ...(this.profileSubmittedFilter(query) ?? {}),
+            ...this.sourcedByCandidateFilter(query),
           },
           NOT: {
             onboarding: { statusCode: 'JOINED', deletedAt: null },
@@ -635,6 +690,7 @@ export class DashboardService {
           candidate: {
             deletedAt: null,
             ...(this.profileSubmittedFilter(query) ?? {}),
+            ...this.sourcedByCandidateFilter(query),
           },
         },
         select: offerSelect,
@@ -648,6 +704,7 @@ export class DashboardService {
           candidate: {
             deletedAt: null,
             ...(this.profileSubmittedFilter(query) ?? {}),
+            ...this.sourcedByCandidateFilter(query),
           },
         },
         select: {
@@ -663,6 +720,8 @@ export class DashboardService {
               name: true,
               email: true,
               profileSubmittedDate: true,
+              sourcedByUserId: true,
+              sourcedBy: { select: ownerUserSelect },
             },
           },
           requirement: { select: requirementOwnerSelect },
@@ -718,6 +777,10 @@ export class DashboardService {
         ? mapRequirementOwners(row.requirement)
         : null;
       const owners = this.ownerFieldsFromRequirement(requirement);
+      const sourcedBy =
+        this.sourcedByFields(row.sourcedBy)
+        ?? this.sourcedByFields(row.candidate?.sourcedBy)
+        ?? null;
       return {
         ...row,
         requirement,
@@ -726,6 +789,7 @@ export class DashboardService {
           row.profileSubmittedDate
           ?? row.candidate?.profileSubmittedDate
           ?? null,
+        sourcedBy,
         taOwners: owners.taOwners,
         salesOwner: owners.salesOwner,
       };
@@ -766,6 +830,9 @@ export class DashboardService {
     );
     const cancelledRequirements = requirements.filter(
       (r) => r.status === 'CANCELLED',
+    );
+    const closedRequirements = requirements.filter(
+      (r) => r.status === 'CLOSED',
     );
     const sourcedRequirementIds = new Set(
       allCandidatesForDupes.map((c) => c.requirementId),
@@ -897,6 +964,7 @@ export class DashboardService {
         roleSkill: joined.requirement?.roleSkill ?? requirement?.roleSkill ?? null,
         candidateName: joined.candidate?.name ?? null,
         profileSubmittedDate: joined.candidate?.profileSubmittedDate ?? null,
+        sourcedBy: this.sourcedByFields(joined.candidate?.sourcedBy),
         taOwners: owners.taOwners,
         salesOwner: owners.salesOwner ?? requirement?.salesOwner ?? null,
       };
@@ -928,6 +996,7 @@ export class DashboardService {
       offersRejected: offersRejected.map(attachListOwners),
       candidatesJoined: candidatesJoined.map(attachListOwners),
       cancelledRequirements,
+      closedRequirements,
       requirementsAtRisk,
       overdueRequirements,
       wastedSourcing,
@@ -1227,67 +1296,88 @@ export class DashboardService {
     const counted = requirements.filter((requirement) => requirement.status !== 'CANCELLED');
     const ids = counted.map((requirement) => requirement.id);
     const profileFilter = this.profileSubmittedFilter(query);
-    const [candidateGroups, joinedGroups, salesUsers, taUsers] = await Promise.all([
-      ids.length
-        ? this.prisma.candidate.groupBy({
-            by: ['requirementId', 'selected'],
-            where: {
-              ...this.candidateWhere(query),
-              requirementId: { in: ids },
-            },
-            _count: { _all: true },
-          })
-        : [],
-      ids.length
-        ? this.prisma.onboarding.groupBy({
-            by: ['requirementId'],
-            where: {
-              deletedAt: null,
-              statusCode: 'JOINED',
-              requirementId: { in: ids },
-              ...(profileFilter
-                ? { candidate: { deletedAt: null, ...profileFilter } }
-                : {}),
-            },
-            _count: { _all: true },
-          })
-        : [],
-      this.prisma.user.findMany({
-        where: {
-          deletedAt: null,
-          isActive: true,
-          role: { in: [Role.SALES, Role.SALES_LEAD] },
-        },
-        select: { id: true, fullName: true },
-        orderBy: { fullName: 'asc' },
-      }),
-      this.prisma.user.findMany({
-        where: {
-          deletedAt: null,
-          isActive: true,
-          role: { in: [Role.TA, Role.TA_LEAD] },
-        },
-        select: { id: true, fullName: true },
-        orderBy: { fullName: 'asc' },
-      }),
-    ]);
-    const candidateMap = new Map<string, number>();
-    const selectedMap = new Map<string, number>();
-    for (const group of candidateGroups) {
-      candidateMap.set(
-        group.requirementId,
-        (candidateMap.get(group.requirementId) ?? 0) + group._count._all,
-      );
-      if (group.selected) {
-        selectedMap.set(
-          group.requirementId,
-          (selectedMap.get(group.requirementId) ?? 0) + group._count._all,
-        );
-      }
-    }
-    const joinedMap = new Map(
-      joinedGroups.map((group) => [group.requirementId, group._count._all]),
+    const primaryTaFor = (requirement: (typeof counted)[number]) =>
+      requirement.taAssignments.find((assignment) => assignment.isPrimary)?.user ??
+      requirement.taAssignments[0]?.user ??
+      requirement.taOwner ??
+      null;
+
+    const [candidates, joinedRows, salesUsers, taUsers, seatJoinedGroups] =
+      await Promise.all([
+        ids.length
+          ? this.prisma.candidate.findMany({
+              where: {
+                deletedAt: null,
+                requirementId: { in: ids },
+                ...(profileFilter ?? {}),
+                ...this.sourcedByCandidateFilter(query),
+              },
+              select: {
+                requirementId: true,
+                selected: true,
+                sourcedByUserId: true,
+                sourcedBy: { select: { id: true, fullName: true } },
+              },
+            })
+          : [],
+        ids.length
+          ? this.prisma.onboarding.findMany({
+              where: {
+                deletedAt: null,
+                statusCode: 'JOINED',
+                requirementId: { in: ids },
+                candidate: {
+                  deletedAt: null,
+                  ...(profileFilter ?? {}),
+                  ...this.sourcedByCandidateFilter(query),
+                },
+              },
+              select: {
+                requirementId: true,
+                candidate: {
+                  select: {
+                    sourcedByUserId: true,
+                    sourcedBy: { select: { id: true, fullName: true } },
+                  },
+                },
+              },
+            })
+          : [],
+        this.prisma.user.findMany({
+          where: {
+            deletedAt: null,
+            isActive: true,
+            role: { in: [Role.SALES, Role.SALES_LEAD] },
+          },
+          select: { id: true, fullName: true },
+          orderBy: { fullName: 'asc' },
+        }),
+        this.prisma.user.findMany({
+          where: {
+            deletedAt: null,
+            isActive: true,
+            role: { in: [Role.TA, Role.TA_LEAD] },
+          },
+          select: { id: true, fullName: true },
+          orderBy: { fullName: 'asc' },
+        }),
+        ids.length
+          ? this.prisma.onboarding.groupBy({
+              by: ['requirementId'],
+              where: {
+                deletedAt: null,
+                statusCode: 'JOINED',
+                requirementId: { in: ids },
+              },
+              _count: { _all: true },
+            })
+          : [],
+      ]);
+
+    const seatJoinedMap = new Map(
+      seatJoinedGroups.map((group) => [group.requirementId, group._count._all]),
     );
+    const requirementById = new Map(counted.map((r) => [r.id, r]));
 
     type OwnerBucket = {
       id: string;
@@ -1299,34 +1389,6 @@ export class DashboardService {
       openPositions: number;
       joined: number;
     };
-    const add = (
-      buckets: Map<string, OwnerBucket>,
-      owner: { id: string; fullName: string } | null,
-      requirement: (typeof counted)[number],
-    ) => {
-      if (!owner) return;
-      const bucket = buckets.get(owner.id) ?? {
-        id: owner.id,
-        name: owner.fullName,
-        requirements: 0,
-        positions: 0,
-        candidates: 0,
-        selected: 0,
-        openPositions: 0,
-        joined: 0,
-      };
-      const joined = joinedMap.get(requirement.id) ?? 0;
-      bucket.requirements += 1;
-      bucket.positions += requirement.numberOfPositions;
-      bucket.candidates += candidateMap.get(requirement.id) ?? 0;
-      bucket.selected += selectedMap.get(requirement.id) ?? 0;
-      bucket.joined += joined;
-      if (requirement.status === 'ACTIVE' || requirement.status === 'ON_HOLD') {
-        bucket.openPositions += Math.max(0, requirement.numberOfPositions - joined);
-      }
-      buckets.set(owner.id, bucket);
-    };
-
     const blankBucket = (owner: { id: string; fullName: string }): OwnerBucket => ({
       id: owner.id,
       name: owner.fullName,
@@ -1337,20 +1399,106 @@ export class DashboardService {
       openPositions: 0,
       joined: 0,
     });
+    const ensureBucket = (
+      buckets: Map<string, OwnerBucket>,
+      owner: { id: string; fullName: string },
+    ) => {
+      const existing = buckets.get(owner.id);
+      if (existing) return existing;
+      const created = blankBucket(owner);
+      buckets.set(owner.id, created);
+      return created;
+    };
+
     const salesBuckets = new Map<string, OwnerBucket>(
       salesUsers.map((owner) => [owner.id, blankBucket(owner)]),
     );
     const taBuckets = new Map<string, OwnerBucket>(
       taUsers.map((owner) => [owner.id, blankBucket(owner)]),
     );
+
+    // Requirement / seat metrics stay on sales owner and primary TA.
     for (const requirement of counted) {
-      add(salesBuckets, requirement.salesOwner, requirement);
-      const primaryTa =
-        requirement.taAssignments.find((assignment) => assignment.isPrimary)?.user ??
-        requirement.taAssignments[0]?.user ??
-        requirement.taOwner ??
-        null;
-      add(taBuckets, primaryTa, requirement);
+      if (requirement.salesOwner) {
+        const salesBucket = ensureBucket(salesBuckets, requirement.salesOwner);
+        const seatJoined = seatJoinedMap.get(requirement.id) ?? 0;
+        salesBucket.requirements += 1;
+        salesBucket.positions += requirement.numberOfPositions;
+        if (requirement.status === 'ACTIVE' || requirement.status === 'ON_HOLD') {
+          salesBucket.openPositions += Math.max(
+            0,
+            requirement.numberOfPositions - seatJoined,
+          );
+        }
+      }
+      const primaryTa = primaryTaFor(requirement);
+      if (primaryTa) {
+        const taBucket = ensureBucket(taBuckets, primaryTa);
+        const seatJoined = seatJoinedMap.get(requirement.id) ?? 0;
+        taBucket.requirements += 1;
+        taBucket.positions += requirement.numberOfPositions;
+        if (requirement.status === 'ACTIVE' || requirement.status === 'ON_HOLD') {
+          taBucket.openPositions += Math.max(
+            0,
+            requirement.numberOfPositions - seatJoined,
+          );
+        }
+      }
+    }
+
+    // Candidate metrics: sales still roll up by requirement; TA by sourcedBy.
+    const salesCandidateMap = new Map<string, { candidates: number; selected: number; joined: number }>();
+    for (const candidate of candidates) {
+      const requirement = requirementById.get(candidate.requirementId);
+      if (!requirement?.salesOwner) continue;
+      const row = salesCandidateMap.get(requirement.salesOwner.id) ?? {
+        candidates: 0,
+        selected: 0,
+        joined: 0,
+      };
+      row.candidates += 1;
+      if (candidate.selected) row.selected += 1;
+      salesCandidateMap.set(requirement.salesOwner.id, row);
+    }
+    for (const joined of joinedRows) {
+      const requirement = requirementById.get(joined.requirementId);
+      if (!requirement?.salesOwner) continue;
+      const row = salesCandidateMap.get(requirement.salesOwner.id) ?? {
+        candidates: 0,
+        selected: 0,
+        joined: 0,
+      };
+      row.joined += 1;
+      salesCandidateMap.set(requirement.salesOwner.id, row);
+    }
+    for (const [ownerId, counts] of salesCandidateMap) {
+      const bucket = salesBuckets.get(ownerId);
+      if (!bucket) continue;
+      bucket.candidates += counts.candidates;
+      bucket.selected += counts.selected;
+      bucket.joined += counts.joined;
+    }
+
+    for (const candidate of candidates) {
+      const requirement = requirementById.get(candidate.requirementId);
+      const owner =
+        candidate.sourcedBy ??
+        (requirement ? primaryTaFor(requirement) : null);
+      if (!owner) continue;
+      if (query.taOwnerId && owner.id !== query.taOwnerId) continue;
+      const bucket = ensureBucket(taBuckets, owner);
+      bucket.candidates += 1;
+      if (candidate.selected) bucket.selected += 1;
+    }
+    for (const joined of joinedRows) {
+      const requirement = requirementById.get(joined.requirementId);
+      const owner =
+        joined.candidate?.sourcedBy ??
+        (requirement ? primaryTaFor(requirement) : null);
+      if (!owner) continue;
+      if (query.taOwnerId && owner.id !== query.taOwnerId) continue;
+      const bucket = ensureBucket(taBuckets, owner);
+      bucket.joined += 1;
     }
 
     const sourcedPerPosition = (candidates: number, positions: number) =>
@@ -1494,6 +1642,7 @@ export class DashboardService {
           deletedAt: null,
           requirement: scope,
           ...(profileFilter ?? {}),
+          ...this.sourcedByCandidateFilter(query),
           OR: [
             { profileSubmittedDate: { gte: fromStart, lte: toEnd } },
             {
@@ -1513,6 +1662,7 @@ export class DashboardService {
           createdAt: true,
           selected: true,
           selectedAt: true,
+          sourcedBy: { select: { id: true, fullName: true } },
           requirement: {
             select: {
               taOwner: { select: { id: true, fullName: true } },
@@ -1542,13 +1692,14 @@ export class DashboardService {
     }
 
     for (const candidate of candidates) {
-      const primary = resolvePrimaryTa(candidate.requirement);
-      if (!primary) continue;
+      const owner =
+        candidate.sourcedBy ?? resolvePrimaryTa(candidate.requirement);
+      if (!owner) continue;
 
       const sourcedAt = candidate.profileSubmittedDate ?? candidate.createdAt;
       const sourcedDay = this.dayKey(sourcedAt);
       if (sourcedAt >= fromStart && sourcedAt <= toEnd) {
-        bump(sourcedDay, primary, 'candidatesSourced', 1);
+        bump(sourcedDay, owner, 'candidatesSourced', 1);
       }
 
       if (
@@ -1557,7 +1708,7 @@ export class DashboardService {
         candidate.selectedAt >= fromStart &&
         candidate.selectedAt <= toEnd
       ) {
-        bump(this.dayKey(candidate.selectedAt), primary, 'selectedCandidates', 1);
+        bump(this.dayKey(candidate.selectedAt), owner, 'selectedCandidates', 1);
       }
     }
 

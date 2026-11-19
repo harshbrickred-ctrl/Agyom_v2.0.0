@@ -96,6 +96,12 @@ export class DashboardSummaryDto {
 
   @ApiProperty({
     example: 0,
+    description: 'Requirements with status CLOSED',
+  })
+  closedRequirements!: number;
+
+  @ApiProperty({
+    example: 0,
     description:
       'Cancelled requirements where TA handoff or candidate sourcing started',
   })
@@ -390,6 +396,13 @@ export class DashboardListsDto {
     items: { type: 'object' },
   })
   cancelledRequirements!: Record<string, unknown>[];
+
+  @ApiProperty({
+    description: 'Requirements with status CLOSED',
+    type: 'array',
+    items: { type: 'object' },
+  })
+  closedRequirements!: Record<string, unknown>[];
 
   @ApiProperty({
     description: 'Requirements with RED handoff SLA',

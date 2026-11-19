@@ -231,14 +231,14 @@ export default function SourcingPanel({
         <div className="sourcing-section">
           <form className="sourcing-talent-form" onSubmit={loadTalent}>
             <div className="field">
-              <label className="field-label" htmlFor="sourcing-talent-q">Role keywords</label>
+              <label className="field-label" htmlFor="sourcing-talent-q">Name, email, mobile, or role</label>
               <input
                 id="sourcing-talent-q"
                 className="field-control"
                 type="search"
                 value={talentQ}
                 onChange={(e) => setTalentQ(e.target.value)}
-                placeholder="Role keywords…"
+                placeholder="Search by name, email, mobile, or role…"
               />
             </div>
             <button type="submit" className="add-submit" disabled={talentLoading}>
@@ -247,12 +247,15 @@ export default function SourcingPanel({
           </form>
           {talentError && <div className="add-error">{talentError}</div>}
           {!talentLoading && talentItems.length === 0 && (
-            <div className="kpi-modal-empty">No similar candidates yet. Search to scan past requirements.</div>
+            <div className="kpi-modal-empty">No similar candidates yet. Search by name, email, mobile, or role — including people who already joined elsewhere.</div>
           )}
           {talentItems.length > 0 && (
             <ul className="sourcing-talent-list">
               {talentItems.map((row) => {
                 const onReq = alreadyOnReq(row.email, row.mobile);
+                const joinedElsewhere =
+                  row.pipelineStage === 'JOINED'
+                  || String(row.pipelineLabel || '').toLowerCase() === 'joined';
                 return (
                   <li key={row.id}>
                     <div className="sourcing-talent-main">
@@ -263,11 +266,15 @@ export default function SourcingPanel({
                         {row.requirement?.publicId || '—'}
                         {' · '}
                         {row.requirement?.clientName || '—'}
+                        {row.requirement?.roleSkill ? ` · ${row.requirement.roleSkill}` : ''}
                       </span>
                       <span className="sourcing-talent-tags">
                         <span className="duplicate-pipeline-badge">
                           {row.pipelineLabel || row.stageCode || '—'}
                         </span>
+                        {joinedElsewhere ? (
+                          <span className="duplicate-already">Joined elsewhere — can re-add</span>
+                        ) : null}
                         {row.selected ? <span className="duplicate-already">Selected</span> : null}
                         <em>{formatDate(row.createdAt)}</em>
                       </span>

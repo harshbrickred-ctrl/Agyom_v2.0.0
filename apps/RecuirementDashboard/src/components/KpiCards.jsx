@@ -46,6 +46,7 @@ const KPI_LABELS = {
   totalRequirements: 'Total Requirements',
   activeRequirements: 'Active Requirements',
   onHoldRequirements: 'On Hold Requirements',
+  closedRequirements: 'Closed Requirements',
   totalPositions: 'No. of Positions',
   openPositions: 'Open Positions',
   closedPositions: 'Closed Positions',

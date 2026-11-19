@@ -23,6 +23,7 @@ model User {
   refreshTokens     RefreshToken[]
   salesRequirements Requirement[]  @relation("SalesOwner")
   taRequirements    Requirement[]  @relation("TaOwner")
+  sourcedCandidates Candidate[]    @relation("CandidateSourcedBy")
   taAssignments     RequirementTaAssignment[]
   taLeadAssignments RequirementTaLeadAssignment[]
   notifications     Notification[]
@@ -166,6 +167,8 @@ model Candidate {
   id          String      @id @default(uuid())
   publicId             String      @unique @map("public_id")
   requirementId        String      @map("requirement_id")
+  /// TA (or actor) who added this candidate to the requirement — used for KPI attribution.
+  sourcedByUserId      String?     @map("sourced_by_user_id")
   name                 String
   position             String?   @map("position")
   jobFamily            String?   @map("job_family")
@@ -192,10 +195,12 @@ model Candidate {
   updatedAt            DateTime    @updatedAt @map("updated_at")
   deletedAt            DateTime?   @map("deleted_at")
   requirement          Requirement @relation(fields: [requirementId], references: [id])
+  sourcedBy            User?       @relation("CandidateSourcedBy", fields: [sourcedByUserId], references: [id])
   offer                Offer?
   onboarding           Onboarding?
 
   @@index([requirementId])
+  @@index([sourcedByUserId])
   @@index([mobileNormalized])
   @@index([emailNormalized])
   @@index([selected])

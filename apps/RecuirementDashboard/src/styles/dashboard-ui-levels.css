@@ -1388,6 +1388,14 @@ Color: var(--dash-text-body);
   max-width: none;
 }
 
+.kpi-detail-modal .data-table tbody tr.kpi-row-clickable {
+  cursor: pointer;
+}
+
+.kpi-detail-modal .data-table tbody tr.kpi-row-clickable:hover td {
+  background: color-mix(in srgb, var(--accent, #0ea5e9) 12%, transparent);
+}
+
 .kpi-modal-empty {
   padding: 36px 16px;
   text-align: center;

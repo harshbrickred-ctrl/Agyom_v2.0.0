@@ -18,6 +18,12 @@ const DEMO_USERS = [
   },
   { email: 'demo.ta@sst.dev', fullName: 'Demo TA Recruiter', role: Role.TA },
   {
+    email: 'demo.ta2@sst.dev',
+    fullName: 'Demo TA Two',
+    role: Role.TA,
+    key: 'TA2',
+  },
+  {
     email: 'demo.talead@sst.dev',
     fullName: 'Demo TA Lead',
     role: Role.TA_LEAD,
@@ -87,7 +93,8 @@ async function upsertRequirement(
     clientId: string;
     jobFamilyId: string;
     salesOwnerId: string;
-    taOwnerId: string;
+    /** First id is primary TA; additional ids share the requirement. */
+    taOwnerIds: string[];
     taLeadId: string;
     numberOfPositions: number;
     priorityCode: string;
@@ -98,6 +105,12 @@ async function upsertRequirement(
     remarks?: string;
   },
 ) {
+  const taOwnerIds = [...new Set(input.taOwnerIds.filter(Boolean))];
+  if (!taOwnerIds.length) {
+    throw new Error(`Requirement ${input.publicId} needs at least one TA`);
+  }
+  const primaryTaId = taOwnerIds[0];
+
   const req = await prisma.requirement.upsert({
     where: { publicId: input.publicId },
     create: {
@@ -108,7 +121,7 @@ async function upsertRequirement(
       jobFamilyId: input.jobFamilyId,
       numberOfPositions: input.numberOfPositions,
       salesOwnerId: input.salesOwnerId,
-      taOwnerId: input.taOwnerId,
+      taOwnerId: primaryTaId,
       priorityCode: input.priorityCode,
       taHandoffDate: input.taHandoffDate,
       targetClosureDate: input.targetClosureDate,
@@ -124,7 +137,7 @@ async function upsertRequirement(
       jobFamilyId: input.jobFamilyId,
       numberOfPositions: input.numberOfPositions,
       salesOwnerId: input.salesOwnerId,
-      taOwnerId: input.taOwnerId,
+      taOwnerId: primaryTaId,
       priorityCode: input.priorityCode,
       taHandoffDate: input.taHandoffDate,
       targetClosureDate: input.targetClosureDate,
@@ -136,20 +149,29 @@ async function upsertRequirement(
     },
   });
 
-  await prisma.requirementTaAssignment.upsert({
+  await prisma.requirementTaAssignment.deleteMany({
     where: {
-      requirementId_userId: {
-        requirementId: req.id,
-        userId: input.taOwnerId,
-      },
-    },
-    create: {
       requirementId: req.id,
-      userId: input.taOwnerId,
-      isPrimary: true,
+      userId: { notIn: taOwnerIds },
     },
-    update: { isPrimary: true },
   });
+  for (let i = 0; i < taOwnerIds.length; i++) {
+    const userId = taOwnerIds[i];
+    await prisma.requirementTaAssignment.upsert({
+      where: {
+        requirementId_userId: {
+          requirementId: req.id,
+          userId,
+        },
+      },
+      create: {
+        requirementId: req.id,
+        userId,
+        isPrimary: i === 0,
+      },
+      update: { isPrimary: i === 0 },
+    });
+  }
 
   await prisma.requirementTaLeadAssignment.upsert({
     where: {
@@ -170,6 +192,7 @@ async function upsertCandidate(
   input: {
     publicId: string;
     requirementId: string;
+    sourcedByUserId: string;
     name: string;
     email: string;
     mobile: string;
@@ -180,6 +203,7 @@ async function upsertCandidate(
     loiStatus?: LoiStatus;
     remarks?: string;
     clientShortlistDate?: Date | null;
+    position?: string | null;
   },
 ) {
   const emailNormalized = normalizeEmail(input.email);
@@ -189,12 +213,14 @@ async function upsertCandidate(
     create: {
       publicId: input.publicId,
       requirementId: input.requirementId,
+      sourcedByUserId: input.sourcedByUserId,
       name: input.name,
       mobile: input.mobile,
       mobileNormalized,
       email: input.email,
       emailNormalized,
       source: 'Demo Seed',
+      position: input.position ?? null,
       stageCode: input.stageCode,
       interviewRound: input.interviewRound ?? null,
       feedbackCode: input.feedbackCode ?? null,
@@ -207,12 +233,14 @@ async function upsertCandidate(
     },
     update: {
       requirementId: input.requirementId,
+      sourcedByUserId: input.sourcedByUserId,
       name: input.name,
       mobile: input.mobile,
       mobileNormalized,
       email: input.email,
       emailNormalized,
       source: 'Demo Seed',
+      position: input.position ?? null,
       stageCode: input.stageCode,
       interviewRound: input.interviewRound ?? null,
       feedbackCode: input.feedbackCode ?? null,
@@ -349,7 +377,8 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
       def.fullName,
       def.role,
     );
-    users[def.role] = { id: user.id, email: user.email };
+    const key = 'key' in def && def.key ? String(def.key) : def.role;
+    users[key] = { id: user.id, email: user.email };
   }
 
   const [clientAlpha, clientBeta] = await Promise.all(
@@ -361,6 +390,7 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
 
   const sales = users.SALES!;
   const ta = users.TA!;
+  const ta2 = users.TA2!;
   const taLead = users.TA_LEAD!;
   const hr = users.HR!;
 
@@ -371,7 +401,7 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     clientId: clientAlpha.id,
     jobFamilyId: jobEng.id,
     salesOwnerId: sales.id,
-    taOwnerId: ta.id,
+    taOwnerIds: [ta.id],
     taLeadId: taLead.id,
     numberOfPositions: 3,
     priorityCode: 'HIGH',
@@ -389,7 +419,7 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     clientId: clientBeta.id,
     jobFamilyId: jobEng.id,
     salesOwnerId: sales.id,
-    taOwnerId: ta.id,
+    taOwnerIds: [ta.id],
     taLeadId: taLead.id,
     numberOfPositions: 2,
     priorityCode: 'MEDIUM',
@@ -407,7 +437,7 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     clientId: clientAlpha.id,
     jobFamilyId: jobData.id,
     salesOwnerId: sales.id,
-    taOwnerId: ta.id,
+    taOwnerIds: [ta.id],
     taLeadId: taLead.id,
     numberOfPositions: 1,
     priorityCode: 'CRITICAL',
@@ -415,7 +445,8 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     requirementDate: daysAgo(45),
     taHandoffDate: daysAgo(40),
     targetClosureDate: daysAgo(5),
-    remarks: 'Demo CLOSED req — candidate joined.',
+    remarks:
+      'VERIFY Closed Requirements KPI — open card, click this row, view joined pipeline.',
   });
 
   const reqCancelled = await upsertRequirement(prisma, {
@@ -425,7 +456,7 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     clientId: clientBeta.id,
     jobFamilyId: jobEng.id,
     salesOwnerId: sales.id,
-    taOwnerId: ta.id,
+    taOwnerIds: [ta.id],
     taLeadId: taLead.id,
     numberOfPositions: 1,
     priorityCode: 'LOW',
@@ -443,7 +474,7 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     clientId: clientAlpha.id,
     jobFamilyId: jobEng.id,
     salesOwnerId: sales.id,
-    taOwnerId: ta.id,
+    taOwnerIds: [ta.id],
     taLeadId: taLead.id,
     numberOfPositions: 1,
     priorityCode: 'LOW',
@@ -452,6 +483,46 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     taHandoffDate: daysAgo(1),
     targetClosureDate: daysFromNow(60),
     remarks: 'Demo req for admin bulk/single delete testing.',
+  });
+
+  // Talent-pool re-assign target: search "DevOps" or email demo.rahul@sst.dev
+  const reqTalentTarget = await upsertRequirement(prisma, {
+    publicId: 'REQ-90006',
+    roleSkill: 'DEMO | Active — DevOps Engineer (Talent Pool)',
+    status: RequirementStatus.ACTIVE,
+    clientId: clientBeta.id,
+    jobFamilyId: jobData.id,
+    salesOwnerId: sales.id,
+    taOwnerIds: [ta.id],
+    taLeadId: taLead.id,
+    numberOfPositions: 2,
+    priorityCode: 'HIGH',
+    jobLocation: 'Remote',
+    requirementDate: daysAgo(5),
+    taHandoffDate: daysAgo(4),
+    targetClosureDate: daysFromNow(40),
+    remarks:
+      'VERIFY Talent Pool — open Assign Task → Talent pool → search DevOps or demo.rahul@sst.dev; re-add joined Rahul from REQ-90003.',
+  });
+
+  // Multi-TA attribution: TA1 sourced joined CN1; TA2 sourced pipeline CN2
+  const reqMultiTa = await upsertRequirement(prisma, {
+    publicId: 'REQ-90007',
+    roleSkill: 'DEMO | Active — Multi-TA Platform Engineer',
+    status: RequirementStatus.ACTIVE,
+    clientId: clientAlpha.id,
+    jobFamilyId: jobEng.id,
+    salesOwnerId: sales.id,
+    taOwnerIds: [ta.id, ta2.id],
+    taLeadId: taLead.id,
+    numberOfPositions: 1,
+    priorityCode: 'HIGH',
+    jobLocation: 'Bangalore',
+    requirementDate: daysAgo(12),
+    taHandoffDate: daysAgo(11),
+    targetClosureDate: daysFromNow(20),
+    remarks:
+      'VERIFY TA attribution — filter dashboard by Demo TA Recruiter (CN1 joined) vs Demo TA Two (CN2 only in pipeline). Joined must not duplicate across TAs.',
   });
 
   const noteExists = await prisma.requirementNote.findFirst({
@@ -470,18 +541,21 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
   await upsertCandidate(prisma, {
     publicId: 'CAND-90001',
     requirementId: reqActive.id,
+    sourcedByUserId: ta.id,
     name: 'DEMO Priya Sharma (L1)',
     email: 'demo.priya@sst.dev',
     mobile: '9876500001',
     stageCode: 'SUBMITTED_TO_SPOC',
     interviewRound: 'L1',
     feedbackCode: 'PENDING',
+    position: 'Senior React Developer',
     remarks: 'Early pipeline — L1 scheduled.',
   });
 
   await upsertCandidate(prisma, {
     publicId: 'CAND-90002',
     requirementId: reqActive.id,
+    sourcedByUserId: ta.id,
     name: 'DEMO Arjun Patel (L2)',
     email: 'demo.arjun@sst.dev',
     mobile: '9876500002',
@@ -489,12 +563,14 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     interviewRound: 'L2',
     feedbackCode: 'POSITIVE',
     clientShortlistDate: daysAgo(2),
+    position: 'Senior React Developer',
     remarks: 'Client shortlist — L2 cleared.',
   });
 
   const candSelected = await upsertCandidate(prisma, {
     publicId: 'CAND-90003',
     requirementId: reqActive.id,
+    sourcedByUserId: ta.id,
     name: 'DEMO Sneha Reddy (Selected + Offer)',
     email: 'demo.sneha@sst.dev',
     mobile: '9876500003',
@@ -503,36 +579,42 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     feedbackCode: 'POSITIVE',
     selected: true,
     loiStatus: LoiStatus.RECEIVED,
+    position: 'Senior React Developer',
     remarks: 'Selected — offer in HR pipeline.',
   });
 
   await upsertCandidate(prisma, {
     publicId: 'CAND-90004',
     requirementId: reqActive.id,
+    sourcedByUserId: ta.id,
     name: 'DEMO Vikram Singh (Rejected)',
     email: 'demo.vikram@sst.dev',
     mobile: '9876500004',
     stageCode: 'REJECT',
     interviewRound: 'L1',
     feedbackCode: 'NEGATIVE',
+    position: 'Senior React Developer',
     remarks: 'Rejected after L1.',
   });
 
   await upsertCandidate(prisma, {
     publicId: 'CAND-90005',
     requirementId: reqOnHold.id,
+    sourcedByUserId: ta.id,
     name: 'DEMO Meera Iyer (On Hold Req)',
     email: 'demo.meera@sst.dev',
     mobile: '9876500005',
     stageCode: 'HOLD',
     interviewRound: 'L2',
     feedbackCode: 'HOLD',
+    position: 'Java Backend Engineer',
     remarks: 'Requirement on hold — candidate paused.',
   });
 
   const candJoined = await upsertCandidate(prisma, {
     publicId: 'CAND-90006',
     requirementId: reqClosed.id,
+    sourcedByUserId: ta.id,
     name: 'DEMO Rahul Nair (Joined)',
     email: 'demo.rahul@sst.dev',
     mobile: '9876500006',
@@ -541,8 +623,44 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     feedbackCode: 'POSITIVE',
     selected: true,
     loiStatus: LoiStatus.RECEIVED,
-    remarks: 'Joined — fills closed requirement.',
+    position: 'DevOps Engineer',
+    remarks:
+      'Joined on CLOSED req — re-add via Talent Pool on REQ-90006 (search email or DevOps).',
   });
+
+  // Multi-TA: TA1's joined hire (CN1)
+  const candMultiTaJoined = await upsertCandidate(prisma, {
+    publicId: 'CAND-90007',
+    requirementId: reqMultiTa.id,
+    sourcedByUserId: ta.id,
+    name: 'DEMO Kabir Malhotra (TA1 Joined)',
+    email: 'demo.kabir@sst.dev',
+    mobile: '9876500007',
+    stageCode: 'CLIENT_SHORTLIST',
+    interviewRound: 'COMPLETED',
+    feedbackCode: 'POSITIVE',
+    selected: true,
+    loiStatus: LoiStatus.RECEIVED,
+    position: 'Platform Engineer',
+    remarks: 'Sourced by Demo TA Recruiter — JOINED. Must appear only under TA1 KPIs.',
+  });
+
+  // Multi-TA: TA2's pipeline candidate (CN2) — not joined
+  await upsertCandidate(prisma, {
+    publicId: 'CAND-90008',
+    requirementId: reqMultiTa.id,
+    sourcedByUserId: ta2.id,
+    name: 'DEMO Ananya Gupta (TA2 Pipeline)',
+    email: 'demo.ananya@sst.dev',
+    mobile: '9876500008',
+    stageCode: 'SUBMITTED_TO_SPOC',
+    interviewRound: 'L1',
+    feedbackCode: 'PENDING',
+    position: 'Platform Engineer',
+    remarks: 'Sourced by Demo TA Two — still in pipeline. Filter by TA2 should show this, not Kabir join.',
+  });
+
+  void reqTalentTarget;
 
   const offerActive = await upsertOffer(prisma, {
     publicId: 'OFF-90001',
@@ -560,6 +678,15 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     statusCode: 'ACCEPTED',
     ctcRate: '22 LPA',
     expectedDoj: daysAgo(3),
+  });
+
+  const offerMultiTa = await upsertOffer(prisma, {
+    publicId: 'OFF-90003',
+    candidateId: candMultiTaJoined.id,
+    requirementId: reqMultiTa.id,
+    statusCode: 'ACCEPTED',
+    ctcRate: '24 LPA',
+    expectedDoj: daysAgo(1),
   });
 
   await upsertOnboarding(prisma, {
@@ -587,10 +714,29 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     actualDoj: daysAgo(2),
   });
 
-  await bumpSequence(prisma, 'requirement', 90005);
-  await bumpSequence(prisma, 'candidate', 90006);
-  await bumpSequence(prisma, 'offer', 90002);
-  await bumpSequence(prisma, 'onboarding', 90002);
+  await upsertOnboarding(prisma, {
+    publicId: 'ONB-90003',
+    offerId: offerMultiTa.id,
+    candidateId: candMultiTaJoined.id,
+    requirementId: reqMultiTa.id,
+    hrOwnerId: hr.id,
+    statusCode: 'JOINED',
+    bgvStatusCode: 'CLEARED',
+    docsPending: false,
+    expectedDoj: daysAgo(1),
+    actualDoj: daysAgo(1),
+  });
+
+  // Multi-TA req has 1 seat and Kabir joined → mark CLOSED like fill sync would
+  await prisma.requirement.update({
+    where: { id: reqMultiTa.id },
+    data: { status: RequirementStatus.CLOSED },
+  });
+
+  await bumpSequence(prisma, 'requirement', 90007);
+  await bumpSequence(prisma, 'candidate', 90008);
+  await bumpSequence(prisma, 'offer', 90003);
+  await bumpSequence(prisma, 'onboarding', 90003);
 
   // eslint-disable-next-line no-console
   console.log('\n[demo-seed] Demo data ready. Search for "DEMO |" in Requirements.');
@@ -601,13 +747,17 @@ export async function seedDemoData(prisma: PrismaClient, adminId: string) {
     console.log(`  - ${def.role.padEnd(11)} ${def.email}`);
   }
   // eslint-disable-next-line no-console
-  console.log('[demo-seed] Scenarios:');
+  console.log('[demo-seed] Verification scenarios:');
+  // eslint-disable-next-line no-console
+  console.log('  REQ-90003 CLOSED  — Closed Requirements KPI → click → pipeline (Rahul joined)');
+  // eslint-disable-next-line no-console
+  console.log('  REQ-90006 ACTIVE  — Talent pool: search demo.rahul@sst.dev or DevOps, re-add Rahul');
+  // eslint-disable-next-line no-console
+  console.log('  REQ-90007 CLOSED  — Multi-TA: Kabir (TA1 joined) + Ananya (TA2 pipeline); filter KPIs by TA');
   // eslint-disable-next-line no-console
   console.log('  REQ-90001 ACTIVE  — full TA pipeline + released offer + onboarding');
   // eslint-disable-next-line no-console
   console.log('  REQ-90002 ON_HOLD — paused requirement');
-  // eslint-disable-next-line no-console
-  console.log('  REQ-90003 CLOSED  — joined candidate');
   // eslint-disable-next-line no-console
   console.log('  REQ-90004 CANCELLED — cancelled requirement');
   // eslint-disable-next-line no-console

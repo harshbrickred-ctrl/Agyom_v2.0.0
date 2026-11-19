@@ -288,7 +288,15 @@ async function main() {
     process.env.SEED_DEMO_DATA === 'false';
   if (!demoDisabled) {
     await seedDemoData(prisma, admin.id);
-    await seedVolumeData(prisma);
+    const volumeDisabled =
+      process.env.SEED_VOLUME_DATA === '0' ||
+      process.env.SEED_VOLUME_DATA === 'false';
+    if (!volumeDisabled) {
+      await seedVolumeData(prisma);
+    } else {
+      // eslint-disable-next-line no-console
+      console.log('[seed] Volume seed skipped (SEED_VOLUME_DATA=0).');
+    }
   }
 }
 

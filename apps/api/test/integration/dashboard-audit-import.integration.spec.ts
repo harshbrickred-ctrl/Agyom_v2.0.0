@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { api, assertApiUp } from './helpers';
+import { api, assertApiUp, ensureUser, login, QA_PASS } from './helpers';
 import {
   addCandidate,
   acceptOffer,
@@ -8,6 +8,7 @@ import {
   createOnboarding,
   ensureOfferReleased,
   selectWithEligibleLoi,
+  uniqueSuffix,
   type Persona,
   type RoleKey,
 } from './factories';
@@ -87,6 +88,10 @@ describe('Dashboard / Audit / Import (Phase E)', () => {
     expect(summary.onHoldRequirements).toBe(countStatus('ON_HOLD'));
     expect(summary.cancelledRequirements).toBe(countStatus('CANCELLED'));
     expect(summary.cancelledRequirements).toBe(lists.cancelledRequirements.length);
+    expect(summary.closedRequirements).toBe(countStatus('CLOSED'));
+    expect(summary.closedRequirements).toBe(
+      (lists.closedRequirements as unknown[]).length,
+    );
     expect(summary.totalRequirements).toBe(
       summary.activeRequirements +
         summary.onHoldRequirements +
@@ -179,5 +184,142 @@ describe('Dashboard / Audit / Import (Phase E)', () => {
       body: { entity: 'requirements', csv: 'a\nb\n' },
     });
     expect(res.status).toBe(403);
+  });
+
+  it('IT-DSH-004: joined candidate attributed to sourcing TA only when multi-TA', async () => {
+    const adminToken = personas.ADMIN.token;
+    const ta2 = await ensureUser(
+      adminToken,
+      'qa.ta2@sst.test',
+      'QA TA Two',
+      'TA',
+    );
+    const ta2Login = await login('qa.ta2@sst.test', QA_PASS);
+    const ta2Persona = {
+      id: ta2.id,
+      email: ta2.email,
+      role: 'TA' as const,
+      token: ta2Login.accessToken,
+    };
+
+    const req = await createActiveAssignedRequirement({
+      sales: personas.SALES,
+      ta: personas.TA,
+      taLead: personas.TA_LEAD,
+      clientId,
+      jobFamilyId,
+      positions: 1,
+      roleSkill: `Multi TA ${uniqueSuffix()}`,
+    });
+    const assign = await api('PATCH', `/requirements/${req.id}`, {
+      token: personas.TA_LEAD.token,
+      body: { taOwnerIds: [personas.TA.id, ta2Persona.id] },
+    });
+    expect(assign.status).toBeLessThan(400);
+
+    const { row: cn1 } = await addCandidate(personas.TA.token, req.id);
+    await selectWithEligibleLoi(personas.TA.token, cn1.id);
+    const offerId = await ensureOfferReleased(personas.HR.token, cn1.id);
+    await acceptOffer(personas.HR.token, offerId);
+    const { onbId } = await createOnboarding(personas.HR, offerId);
+    await api('POST', `/onboardings/${onbId}/status`, {
+      token: personas.HR.token,
+      body: {
+        statusCode: 'JOINED',
+        actualDoj: new Date().toISOString().slice(0, 10),
+      },
+    });
+
+    const forTa1 = await api('POST', '/dashboard', {
+      token: adminToken,
+      body: { taOwnerId: personas.TA.id },
+    });
+    const forTa2 = await api('POST', '/dashboard', {
+      token: adminToken,
+      body: { taOwnerId: ta2Persona.id },
+    });
+    expect(forTa1.status).toBeLessThan(300);
+    expect(forTa2.status).toBeLessThan(300);
+
+    const joinedListTa1 = forTa1.data.lists.candidatesJoined as {
+      candidate?: { id?: string };
+      sourcedBy?: { id?: string };
+    }[];
+    expect(joinedListTa1.some((row) => row.candidate?.id === cn1.id)).toBe(true);
+    expect(
+      joinedListTa1.find((row) => row.candidate?.id === cn1.id)?.sourcedBy?.id,
+    ).toBe(personas.TA.id);
+    expect(forTa1.data.summary.candidatesJoined).toBeGreaterThanOrEqual(1);
+
+    const joinedListTa2 = forTa2.data.lists.candidatesJoined as {
+      candidate?: { id?: string };
+    }[];
+    expect(joinedListTa2.some((row) => row.candidate?.id === cn1.id)).toBe(false);
+
+    const unfiltered = await api('POST', '/dashboard', {
+      token: adminToken,
+      body: {},
+    });
+    const allJoined = unfiltered.data.lists.candidatesJoined as {
+      candidate?: { id?: string };
+    }[];
+    expect(allJoined.filter((row) => row.candidate?.id === cn1.id).length).toBe(1);
+
+    const perf = unfiltered.data.ownerPerformance?.ta as {
+      id: string;
+      joined: number;
+    }[];
+    const ta1Perf = perf?.find((row) => row.id === personas.TA.id);
+    expect(ta1Perf?.joined ?? 0).toBeGreaterThanOrEqual(1);
+  });
+
+  it('IT-DSH-005: talent pool returns joined candidate from another requirement by email', async () => {
+    const reqA = await createActiveAssignedRequirement({
+      sales: personas.SALES,
+      ta: personas.TA,
+      taLead: personas.TA_LEAD,
+      clientId,
+      jobFamilyId,
+      positions: 1,
+      roleSkill: `Pool A ${uniqueSuffix()}`,
+    });
+    const reqB = await createActiveAssignedRequirement({
+      sales: personas.SALES,
+      ta: personas.TA,
+      taLead: personas.TA_LEAD,
+      clientId,
+      jobFamilyId,
+      positions: 1,
+      roleSkill: `Pool B ${uniqueSuffix()}`,
+    });
+
+    const email = `joined.pool.${uniqueSuffix()}@sst.test`;
+    const { row } = await addCandidate(personas.TA.token, reqA.id, {
+      email,
+      name: 'Joined Pool Cand',
+    });
+    await selectWithEligibleLoi(personas.TA.token, row.id);
+    const offerId = await ensureOfferReleased(personas.HR.token, row.id);
+    await acceptOffer(personas.HR.token, offerId);
+    const { onbId } = await createOnboarding(personas.HR, offerId);
+    await api('POST', `/onboardings/${onbId}/status`, {
+      token: personas.HR.token,
+      body: {
+        statusCode: 'JOINED',
+        actualDoj: new Date().toISOString().slice(0, 10),
+      },
+    });
+
+    const pool = await api(
+      'GET',
+      `/candidates/talent-pool?requirementId=${reqB.id}&q=${encodeURIComponent(email)}`,
+      { token: personas.TA.token },
+    );
+    expect(pool.status).toBeLessThan(300);
+    const items = (pool.data?.items ?? pool.data) as { email?: string; pipelineStage?: string }[];
+    const list = Array.isArray(items) ? items : [];
+    expect(list.some((item) => String(item.email || '').toLowerCase() === email.toLowerCase())).toBe(true);
+    const hit = list.find((item) => String(item.email || '').toLowerCase() === email.toLowerCase());
+    expect(hit?.pipelineStage).toBe('JOINED');
   });
 });

@@ -80,17 +80,16 @@ export class CreateRequirementDto {
   @IsUUID()
   taOwnerId?: string | null;
 
-  @ApiPropertyOptional({ nullable: true })
-  @IsOptional()
-  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
+  @ApiProperty({ example: '2026-07-10', description: 'TA Handoff Date is required' })
   @IsDateString()
-  taHandoffDate?: string | null;
+  taHandoffDate!: string;
 
-  @ApiPropertyOptional({ nullable: true })
-  @IsOptional()
-  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
+  @ApiProperty({
+    example: '2026-08-01',
+    description: 'Target Closure Date is required',
+  })
   @IsDateString()
-  targetClosureDate?: string | null;
+  targetClosureDate!: string;
 
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
@@ -193,13 +192,19 @@ export class UpdateRequirementDto {
   @MinLength(1)
   priorityCode?: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Required when provided; cannot be cleared to empty/null',
+  })
   @IsOptional()
   @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()
   taHandoffDate?: string | null;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Required when provided; cannot be cleared to empty/null',
+  })
   @IsOptional()
   @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()

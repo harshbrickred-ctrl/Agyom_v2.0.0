@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { api, apiMultipart, assertApiUp, PREFIX, unwrap } from './helpers';
 import {
   addCandidate,
+  advanceToClientShortlist,
   bootstrapPersonas,
   createActiveAssignedRequirement,
   createRequirement,
@@ -209,5 +210,92 @@ describe('Candidates integration (Phase C)', () => {
       content: Buffer.from('%PDF-1.4 hello world resume content here'),
     });
     expect(sales.status).toBe(403);
+  });
+
+  it('IT-CAN-GATES-001: create without interviewRound → 400', async () => {
+    const res = await addCandidate(personas.TA.token, assignedReq.id, {
+      interviewRound: '',
+    });
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.row ?? res).toLowerCase()).toMatch(
+      /interview/,
+    );
+  });
+
+  it('IT-CAN-GATES-002: CLIENT_SHORTLIST without shortlist date → 400', async () => {
+    const { row } = await addCandidate(personas.TA.token, assignedReq.id);
+    const patch = await api('PATCH', `/candidates/${row.id}`, {
+      token: personas.TA.token,
+      body: { stageCode: 'CLIENT_SHORTLIST', clientShortlistDate: null },
+    });
+    expect(patch.status).toBe(400);
+    expect(JSON.stringify(patch.data).toLowerCase()).toMatch(/shortlist/);
+  });
+
+  it('IT-CAN-GATES-003: select while SUBMITTED_TO_SPOC → 400', async () => {
+    const { row } = await addCandidate(personas.TA.token, assignedReq.id);
+    const select = await api('POST', `/candidates/${row.id}/select`, {
+      token: personas.TA.token,
+      body: { selected: true },
+    });
+    expect(select.status).toBe(400);
+    expect(JSON.stringify(select.data)).toMatch(/Client Shortlisted/i);
+  });
+
+  it('IT-CAN-GATES-004: Selected without LOI → 400', async () => {
+    const { row } = await addCandidate(personas.TA.token, assignedReq.id);
+    await advanceToClientShortlist(personas.TA.token, row.id);
+    const patch = await api('PATCH', `/candidates/${row.id}`, {
+      token: personas.TA.token,
+      body: { candidateStatus: 'Selected' },
+    });
+    expect(patch.status).toBe(400);
+    expect(JSON.stringify(patch.data)).toMatch(/LOI is required/i);
+  });
+
+  it('IT-CAN-GATES-005: LOI NOT_RECEIVED soft-deletes offer; stays Selected', async () => {
+    const { row } = await addCandidate(personas.TA.token, assignedReq.id);
+    const { offerId } = await selectWithEligibleLoi(
+      personas.TA.token,
+      row.id,
+    );
+    expect(offerId).toBeTruthy();
+
+    const rollback = await api('PATCH', `/candidates/${row.id}`, {
+      token: personas.TA.token,
+      body: { loiStatus: 'NOT_RECEIVED' },
+    });
+    expect([200, 201]).toContain(rollback.status);
+    const body = unwrap<any>(rollback.data);
+    const candidate = body?.candidate ?? body;
+    expect(candidate.selected).toBe(true);
+    expect(candidate.loiStatus).toBe('NOT_RECEIVED');
+    expect(candidate.offer).toBeFalsy();
+    expect(String(body?.message || rollback.data?.message || '')).toMatch(
+      /Not Received/i,
+    );
+
+    const offerGet = await api('GET', `/offers/${offerId}`, {
+      token: personas.HR.token,
+    });
+    expect(offerGet.status).toBe(404);
+  });
+
+  it('IT-CAN-GATES-006: Admin DELETE soft-deletes; non-Admin → 403', async () => {
+    const { row } = await addCandidate(personas.TA.token, assignedReq.id);
+    const taDelete = await api('DELETE', `/candidates/${row.id}`, {
+      token: personas.TA.token,
+    });
+    expect(taDelete.status).toBe(403);
+
+    const adminDelete = await api('DELETE', `/candidates/${row.id}`, {
+      token: personas.ADMIN.token,
+    });
+    expect([200, 201]).toContain(adminDelete.status);
+
+    const gone = await api('GET', `/candidates/${row.id}`, {
+      token: personas.TA.token,
+    });
+    expect(gone.status).toBe(404);
   });
 });

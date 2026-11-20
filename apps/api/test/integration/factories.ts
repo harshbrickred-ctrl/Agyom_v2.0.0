@@ -112,7 +112,15 @@ export async function createRequirement(
   token: string,
   body: Record<string, unknown>,
 ) {
-  const res = await api('POST', '/requirements', { token, body });
+  const today = new Date().toISOString().slice(0, 10);
+  const res = await api('POST', '/requirements', {
+    token,
+    body: {
+      taHandoffDate: today,
+      targetClosureDate: today,
+      ...body,
+    },
+  });
   return { status: res.status, row: unwrap<any>(res.data), raw: res.data };
 }
 
@@ -125,14 +133,17 @@ export async function createActiveAssignedRequirement(opts: {
   positions?: number;
   roleSkill?: string;
 }) {
+  const today = new Date().toISOString().slice(0, 10);
   const created = await createRequirement(opts.sales.token, {
-    requirementDate: new Date().toISOString().slice(0, 10),
+    requirementDate: today,
     clientId: opts.clientId,
     roleSkill: opts.roleSkill ?? `QA AF ${uniqueSuffix()}`,
     jobFamilyId: opts.jobFamilyId,
     numberOfPositions: opts.positions ?? 2,
     salesOwnerId: opts.sales.id,
     priorityCode: 'HIGH',
+    taHandoffDate: today,
+    targetClosureDate: today,
     taLeadIds: opts.taLead ? [opts.taLead.id] : undefined,
   });
   if (created.status >= 400) {
@@ -176,13 +187,31 @@ export async function addCandidate(
       mobile: `9${u.replace(/\D/g, '').padEnd(9, '0').slice(0, 9)}`,
       email: `cand.${u}@sst.test`,
       stageCode: 'SUBMITTED_TO_SPOC',
+      interviewRound: 'L1',
       ...overrides,
     },
   });
   return { status: res.status, row: unwrap<any>(res.data) };
 }
 
+export async function advanceToClientShortlist(
+  taToken: string,
+  candidateId: string,
+  overrides: Record<string, unknown> = {},
+) {
+  const today = new Date().toISOString().slice(0, 10);
+  return api('PATCH', `/candidates/${candidateId}`, {
+    token: taToken,
+    body: {
+      stageCode: 'CLIENT_SHORTLIST',
+      clientShortlistDate: today,
+      ...overrides,
+    },
+  });
+}
+
 export async function selectWithEligibleLoi(taToken: string, candidateId: string) {
+  await advanceToClientShortlist(taToken, candidateId);
   await api('POST', `/candidates/${candidateId}/select`, {
     token: taToken,
     body: { selected: true },

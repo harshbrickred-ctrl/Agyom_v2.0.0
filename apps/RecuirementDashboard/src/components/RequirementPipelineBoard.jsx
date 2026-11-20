@@ -214,11 +214,17 @@ export default function RequirementPipelineBoard({
                                 Edit
                               </button>
                             )}
-                            {onSelectCandidate && !recruitingBlocked && !c.selected && !c.offer && (
+                            {onSelectCandidate
+                              && !recruitingBlocked
+                              && !c.selected
+                              && !c.offer
+                              && String(c.stageCode || c.candidateStage || '').toUpperCase() === 'CLIENT_SHORTLIST'
+                              && (
                               <button
                                 type="button"
                                 className="cand-edit"
                                 onClick={() => onSelectCandidate(c, true)}
+                                title="Available after Client Shortlisted"
                               >
                                 Select
                               </button>

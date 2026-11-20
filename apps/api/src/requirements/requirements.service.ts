@@ -699,12 +699,32 @@ export class RequirementsService {
 
     if (reqDate && handoff && handoff < reqDate) {
       throw new BadRequestException(
-        'taHandoffDate cannot be before requirementDate',
+        'TA Handoff Date cannot be before Requirement Date.',
       );
     }
     if (reqDate && target && target < reqDate) {
       throw new BadRequestException(
-        'targetClosureDate cannot be before requirementDate',
+        'Target Closure Date cannot be before Requirement Date.',
+      );
+    }
+  }
+
+  /** Reject clearing required dates when the client explicitly sends null/empty. */
+  private assertDatesNotCleared(payload: UpdateRequirementDto) {
+    if (
+      payload.taHandoffDate !== undefined &&
+      (payload.taHandoffDate === null || payload.taHandoffDate === '')
+    ) {
+      throw new BadRequestException(
+        'TA Handoff Date is required and cannot be cleared.',
+      );
+    }
+    if (
+      payload.targetClosureDate !== undefined &&
+      (payload.targetClosureDate === null || payload.targetClosureDate === '')
+    ) {
+      throw new BadRequestException(
+        'Target Closure Date is required and cannot be cleared.',
       );
     }
   }
@@ -974,6 +994,12 @@ export class RequirementsService {
       await this.assertTaLeadAssignee(id);
     }
     this.validateBudgets(dto.minBudget, dto.maxBudget);
+    if (!dto.taHandoffDate) {
+      throw new BadRequestException('TA Handoff Date is required.');
+    }
+    if (!dto.targetClosureDate) {
+      throw new BadRequestException('Target Closure Date is required.');
+    }
     this.validateDates({
       requirementDate: dto.requirementDate,
       taHandoffDate: dto.taHandoffDate,
@@ -994,12 +1020,8 @@ export class RequirementsService {
           salesOwnerId: dto.salesOwnerId,
           priorityCode: dto.priorityCode,
           taOwnerId: primaryTaId || undefined,
-          taHandoffDate: dto.taHandoffDate
-            ? new Date(dto.taHandoffDate)
-            : undefined,
-          targetClosureDate: dto.targetClosureDate
-            ? new Date(dto.targetClosureDate)
-            : undefined,
+          taHandoffDate: new Date(dto.taHandoffDate),
+          targetClosureDate: new Date(dto.targetClosureDate),
           remarks: dto.remarks?.trim() || undefined,
           experience: dto.experience?.trim() || undefined,
           jobLocation: dto.jobLocation?.trim() || undefined,
@@ -1167,6 +1189,7 @@ export class RequirementsService {
           ? Number(before.maxBudget)
           : null;
     this.validateBudgets(minBudget, maxBudget);
+    this.assertDatesNotCleared(payload);
     this.validateDates({
       requirementDate: payload.requirementDate ?? before.requirementDate,
       taHandoffDate:

@@ -80,15 +80,13 @@ export class CreateCandidateDto {
   @IsDateString()
   clientShortlistDate?: string | null;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'L1',
-    nullable: true,
     description: 'Active INTERVIEW_ROUND lookup: L1 | L2 | L3 | L4 | COMPLETED',
   })
-  @IsOptional()
-  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsString()
-  interviewRound?: string | null;
+  @MinLength(1)
+  interviewRound!: string;
 
   @ApiPropertyOptional({
     example: 'NOT_RECEIVED',

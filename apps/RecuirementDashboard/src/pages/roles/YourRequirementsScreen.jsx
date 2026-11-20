@@ -47,6 +47,7 @@ export default function YourRequirementsScreen() {
   const [editing, setEditing] = useState(null); // requirement being edited
   const [viewingRequirement, setViewingRequirement] = useState(null); // requirement pipeline view
   const [viewingCandidate, setViewingCandidate] = useState(null);
+  const [pipelineRefreshKey, setPipelineRefreshKey] = useState(0);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState(null);
@@ -437,6 +438,16 @@ export default function YourRequirementsScreen() {
     setSaving(true);
     setEditError(null);
     setEditSuccess(null);
+    if (!String(form.taHandoffDate || '').trim()) {
+      setEditError('TA Handoff Date is required.');
+      setSaving(false);
+      return;
+    }
+    if (!String(form.targetClosureDate || '').trim()) {
+      setEditError('Target Closure Date is required.');
+      setSaving(false);
+      return;
+    }
     const toInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : undefined; };
     const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : undefined; };
     const payload = {
@@ -460,8 +471,8 @@ export default function YourRequirementsScreen() {
               }
             : { taOwnerIds: [], taLeadIds: [] }
         : {}),
-      taHandoffDate: form.taHandoffDate || undefined,
-      targetClosureDate: form.targetClosureDate || undefined,
+      taHandoffDate: form.taHandoffDate,
+      targetClosureDate: form.targetClosureDate,
       remarks: form.remarks || undefined,
       experience: form.experience || undefined,
       jobLocation: form.jobLocation,
@@ -811,6 +822,7 @@ export default function YourRequirementsScreen() {
                 requirementId={viewingRequirement.id}
                 requirement={viewingRequirement}
                 mode="readonly"
+                refreshKey={pipelineRefreshKey}
                 onViewCandidate={(c) => setViewingCandidate(c)}
               />
             </div>
@@ -848,6 +860,31 @@ export default function YourRequirementsScreen() {
               />
             </div>
             <div className="modal-foot">
+              {canDelete && (
+                <button
+                  type="button"
+                  className="cand-edit"
+                  onClick={async () => {
+                    const candidateId = viewingCandidate.id || viewingCandidate.publicId;
+                    if (!candidateId) return;
+                    const ok = window.confirm(
+                      'Delete this candidate? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.',
+                    );
+                    if (!ok) return;
+                    try {
+                      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+                      toast(res?.message || 'Candidate deleted');
+                      setViewingCandidate(null);
+                      setPipelineRefreshKey((k) => k + 1);
+                    } catch (err) {
+                      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+                      toast(Array.isArray(msg) ? msg.join(', ') : msg);
+                    }
+                  }}
+                >
+                  Delete candidate
+                </button>
+              )}
               <button className="filter-clear" type="button" onClick={() => setViewingCandidate(null)}>Close</button>
             </div>
           </div>
@@ -1016,12 +1053,12 @@ export default function YourRequirementsScreen() {
                     )}
                   </div>
                   <div className="detail-field">
-                    <span className="detail-label">TA Handoff Date</span>
-                    <input type="date" value={form.taHandoffDate} onChange={(e) => setField('taHandoffDate', e.target.value)} />
+                    <span className="detail-label">TA Handoff Date *</span>
+                    <input type="date" required value={form.taHandoffDate} onChange={(e) => setField('taHandoffDate', e.target.value)} />
                   </div>
                   <div className="detail-field">
-                    <span className="detail-label">Target Closure Date</span>
-                    <input type="date" value={form.targetClosureDate} onChange={(e) => setField('targetClosureDate', e.target.value)} />
+                    <span className="detail-label">Target Closure Date *</span>
+                    <input type="date" required value={form.targetClosureDate} onChange={(e) => setField('targetClosureDate', e.target.value)} />
                   </div>
                   <div className="detail-field">
                     <span className="detail-label">Experience</span>

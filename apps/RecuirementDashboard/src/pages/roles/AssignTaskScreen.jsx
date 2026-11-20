@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { get, post, patch, uploadResume, parseResume } from '../../services/apiClient';
+import { get, post, patch, del, uploadResume, parseResume } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -53,10 +53,10 @@ const CANDIDATE_FIELDS = [
   { key: 'source', label: 'Source', type: 'text', required: true, placeholder: 'Naukri, LinkedIn, Referral…' },
   { key: 'candidateStage', label: 'Pipeline stage', type: 'select', required: true, optionsKey: 'candidateStages' },
   { key: 'feedbackStatus', label: 'Candidate status', type: 'select', required: true, optionsKey: 'candidateStatuses' },
-  { key: 'loiStatus', label: 'LOI', type: 'select', required: false, optionsKey: 'loiStatuses', onlyWhenSelected: true },
+  { key: 'loiStatus', label: 'LOI', type: 'select', required: true, optionsKey: 'loiStatuses', onlyWhenSelected: true },
   { key: 'profileSubmittedDate', label: 'Profile submitted', type: 'date', required: true },
-  { key: 'clientShortlistDate', label: 'Client shortlist', type: 'date', required: false },
-  { key: 'interviewRound', label: 'Interview round', type: 'select', required: false, optionsKey: 'interviewRounds' },
+  { key: 'clientShortlistDate', label: 'Client shortlist', type: 'date', required: false, requiredWhenShortlisted: true },
+  { key: 'interviewRound', label: 'Interview round', type: 'select', required: true, optionsKey: 'interviewRounds' },
   { key: 'remarks', label: 'Remarks', type: 'textarea', required: false, placeholder: 'Skills, notice period, or interview notes' },
 ];
 
@@ -667,6 +667,31 @@ export default function AssignTaskScreen() {
   };
   const openCandidateDetails = (candidate) => setViewingCandidate(candidate);
   const closeCandidateDetails = () => setViewingCandidate(null);
+
+  const handleDeleteCandidate = async () => {
+    if (!viewingCandidate) return;
+    const candidateId = viewingCandidate.id || viewingCandidate.candidateId;
+    if (!candidateId) return;
+    const ok = window.confirm(
+      'Delete this candidate? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.',
+    );
+    if (!ok) return;
+    try {
+      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+      toast(res?.message || 'Candidate deleted');
+      setTasks((prev) => prev.map((t) => ({
+        ...t,
+        candidates: (t.candidates || []).filter(
+          (c) => c.id !== candidateId && c.candidateId !== candidateId && c.publicId !== viewingCandidate.publicId,
+        ),
+      })));
+      setPipelineRefreshKey((k) => k + 1);
+      closeCandidateDetails();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+      toast(Array.isArray(msg) ? msg.join(', ') : msg);
+    }
+  };
   const closeDetail = () => {
     setShowDetail(false);
     closeForm();
@@ -746,12 +771,16 @@ export default function AssignTaskScreen() {
     const isTextarea = f.type === 'textarea';
     const inputType = f.type === 'textarea' || f.type === 'select' ? 'text' : f.type;
     const filled = Boolean(autoFilled[f.key]);
+    const stageIsShortlisted =
+      String(form.candidateStage || '').toUpperCase() === 'CLIENT_SHORTLIST';
+    const showRequired =
+      f.required || (f.requiredWhenShortlisted && stageIsShortlisted);
     return (
       <label key={f.key} className={`cand-field${isTextarea ? ' full' : ''}${filled ? ' cand-field--autofill' : ''}`}>
         <span>
           {f.label}
-          {f.required && <em className="req">*</em>}
-          {!f.required && <em className="optional">Optional</em>}
+          {showRequired && <em className="req">*</em>}
+          {!showRequired && <em className="optional">Optional</em>}
           {filled && <em className="cand-field-badge">From resume</em>}
         </span>
         {f.type === 'select' ? (
@@ -796,9 +825,30 @@ export default function AssignTaskScreen() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null); setSuccess(null);
-    const missing = formFields.filter((f) => f.required && !String(form[f.key]).trim());
+    const stage = String(form.candidateStage || '').toUpperCase();
+    const status = String(form.feedbackStatus || '').trim().toLowerCase();
+    const fieldRequired = (f) => {
+      if (f.required) return true;
+      if (f.requiredWhenShortlisted && stage === 'CLIENT_SHORTLIST') return true;
+      return false;
+    };
+    const missing = formFields.filter((f) => fieldRequired(f) && !String(form[f.key]).trim());
     if (missing.length) {
       setError(`Please fill: ${missing.map((m) => m.label).join(', ')}`);
+      return;
+    }
+    if (status === 'selected' && stage !== 'CLIENT_SHORTLIST') {
+      setError(
+        'Candidate Status cannot be Selected until Pipeline Stage is Client Shortlisted. Advance the candidate to Client Shortlisted first.',
+      );
+      return;
+    }
+    if (status === 'selected' && !String(form.loiStatus || '').trim()) {
+      setError('LOI is required when Candidate Status is Selected.');
+      return;
+    }
+    if (stage === 'CLIENT_SHORTLIST' && !String(form.clientShortlistDate || '').trim()) {
+      setError('Client Shortlist Date is required when Pipeline Stage is Client Shortlisted.');
       return;
     }
     // Shared fields for POST /api/v1/candidates and PATCH /api/v1/candidates/{id}.
@@ -812,12 +862,10 @@ export default function AssignTaskScreen() {
       jobFamily: form.jobFamily || null,
       stageCode: form.candidateStage || 'SUBMITTED_TO_SPOC',
       candidateStatus: form.feedbackStatus,
-      ...(String(form.feedbackStatus || '').trim().toLowerCase() === 'selected'
-        ? { loiStatus: form.loiStatus || 'NOT_RECEIVED' }
-        : {}),
+      ...(status === 'selected' ? { loiStatus: form.loiStatus } : {}),
       profileSubmittedDate: form.profileSubmittedDate || null,
       clientShortlistDate: form.clientShortlistDate || null,
-      interviewRound: form.interviewRound || null,
+      interviewRound: form.interviewRound,
       remarks: form.remarks || null,
     };
     try {
@@ -1405,6 +1453,11 @@ export default function AssignTaskScreen() {
                       />
                     </div>
                     <div className="modal-foot">
+                      {user?.userType === 'admin' && (
+                        <button type="button" className="cand-edit" onClick={handleDeleteCandidate}>
+                          Delete candidate
+                        </button>
+                      )}
                       <button type="button" className="filter-clear" onClick={closeCandidateDetails}>Close</button>
                     </div>
                   </div>

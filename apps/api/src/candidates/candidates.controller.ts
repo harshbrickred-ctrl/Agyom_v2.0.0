@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -244,5 +245,21 @@ export class CandidatesController {
     @CurrentUser() user: AuthUser,
   ): Promise<any> {
     return this.candidates.select(id, dto.selected, user);
+  }
+
+  @Roles(Role.ADMIN)
+  @Delete(':id')
+  @ApiOperation({
+    operationId: 'deleteCandidate',
+    summary: 'Soft-delete candidate and linked offer/onboarding (Admin only)',
+  })
+  @ApiParam({ name: 'id', description: 'UUID or publicId (CAN-00001)' })
+  @ApiOkResponse({ description: 'Soft-deleted candidate' })
+  @ApiMutateErrors()
+  remove(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ message: string; id: string }> {
+    return this.candidates.softDelete(id, user);
   }
 }

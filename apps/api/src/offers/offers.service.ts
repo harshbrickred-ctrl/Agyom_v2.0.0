@@ -211,8 +211,32 @@ export class OffersService {
     ) {
       return null;
     }
-    if (candidate.offer) {
-      return this.get(candidate.offer.id);
+    const existing = candidate.offer;
+    if (existing && !existing.deletedAt) {
+      return this.get(existing.id);
+    }
+    // Unique candidateId: restore a soft-deleted offer instead of inserting a second row.
+    if (existing?.deletedAt) {
+      const restored = await this.prisma.offer.update({
+        where: { id: existing.id },
+        data: {
+          deletedAt: null,
+          statusCode: 'INITIATED',
+          offerInitiatedDate: new Date(),
+          offerReleasedDate: null,
+          expectedDoj: null,
+        },
+        include: this.offerInclude,
+      });
+      await this.audit.log({
+        entityType: 'Offer',
+        entityId: restored.id,
+        action: 'RESTORE',
+        actorUserId: actorId,
+        before: existing,
+        after: restored,
+      });
+      return this.mapOfferRow(restored as any);
     }
     return this.create(
       {
@@ -391,10 +415,39 @@ export class OffersService {
         'Offer can only be initiated when LOI is Not Applicable or Received',
       );
     }
-    if (candidate.offer) {
+    if (candidate.offer && !candidate.offer.deletedAt) {
       throw new ConflictException('Offer already exists for candidate');
     }
     const statusCode = await this.assertOfferStatus(dto.statusCode);
+    if (candidate.offer?.deletedAt) {
+      const restored = await this.prisma.offer.update({
+        where: { id: candidate.offer.id },
+        data: {
+          deletedAt: null,
+          statusCode,
+          selectedDate: candidate.selectedAt ?? new Date(),
+          offerInitiatedDate: dto.offerInitiatedDate
+            ? new Date(dto.offerInitiatedDate)
+            : new Date(),
+          offerReleasedDate: dto.offerReleasedDate
+            ? new Date(dto.offerReleasedDate)
+            : null,
+          ctcRate: dto.ctcRate,
+          expectedDoj: dto.expectedDoj ? new Date(dto.expectedDoj) : null,
+          remarks: dto.remarks,
+        },
+        include: this.offerInclude,
+      });
+      await this.audit.log({
+        entityType: 'Offer',
+        entityId: restored.id,
+        action: 'RESTORE',
+        actorUserId: actorId,
+        before: candidate.offer,
+        after: restored,
+      });
+      return this.mapOfferRow(restored as any);
+    }
     const publicId = await this.ids.next('offer', 'OFF');
     const row = await this.prisma.offer.create({
       data: {

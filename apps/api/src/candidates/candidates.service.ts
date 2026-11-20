@@ -54,13 +54,18 @@ function isLoiEligibleForOffer(status: LoiStatus | string | null | undefined) {
 }
 
 const candidateOfferOnboardingInclude = {
-  offer: { select: { id: true, publicId: true, statusCode: true } },
+  offer: {
+    where: { deletedAt: null },
+    select: { id: true, publicId: true, statusCode: true, deletedAt: true },
+  },
   onboarding: {
+    where: { deletedAt: null },
     select: {
       id: true,
       publicId: true,
       statusCode: true,
       bgvStatusCode: true,
+      deletedAt: true,
     },
   },
 } as const;
@@ -355,6 +360,58 @@ export class CandidatesService {
       normalized,
       'interviewRound',
     );
+  }
+
+  private assertRequiredInterviewRound(
+    interviewRound: string | null | undefined,
+  ): void {
+    if (interviewRound === null || String(interviewRound ?? '').trim() === '') {
+      throw new BadRequestException(
+        'Interview round is required before saving the candidate.',
+      );
+    }
+  }
+
+  private assertShortlistDateWhenShortlisted(
+    stageCode: string,
+    clientShortlistDate: string | Date | null | undefined,
+  ): void {
+    if (stageCode !== 'CLIENT_SHORTLIST') return;
+    if (
+      clientShortlistDate === null ||
+      clientShortlistDate === undefined ||
+      String(clientShortlistDate).trim() === ''
+    ) {
+      throw new BadRequestException(
+        'Client Shortlist Date is required when Pipeline Stage is Client Shortlisted.',
+      );
+    }
+  }
+
+  private assertCanSelect(opts: {
+    stageCode: string;
+    clientShortlistDate: string | Date | null | undefined;
+    loiStatus?: string | null;
+    requireLoi: boolean;
+  }): void {
+    if (opts.stageCode !== 'CLIENT_SHORTLIST') {
+      throw new BadRequestException(
+        'Candidate Status cannot be Selected until Pipeline Stage is Client Shortlisted. Advance the candidate to Client Shortlisted first.',
+      );
+    }
+    this.assertShortlistDateWhenShortlisted(
+      opts.stageCode,
+      opts.clientShortlistDate,
+    );
+    if (opts.requireLoi) {
+      const loi = String(opts.loiStatus ?? '').trim();
+      if (!loi) {
+        throw new BadRequestException(
+          'LOI is required when Candidate Status is Selected.',
+        );
+      }
+      parseLoiStatus(loi);
+    }
   }
 
   /**
@@ -706,18 +763,26 @@ export class CandidatesService {
     const flags = await this.duplicateFlags(mobileNormalized, emailNormalized);
     const publicId = await this.ids.next('candidate', 'CAN');
     const statusFields = this.resolveStatusFields(dto, false);
+    this.assertRequiredInterviewRound(dto.interviewRound);
     const stageCode = await this.assertStageCode(dto.stageCode);
     const interviewRound = await this.assertInterviewRound(dto.interviewRound);
+    this.assertShortlistDateWhenShortlisted(stageCode, dto.clientShortlistDate);
     const becomingSelected = Boolean(statusFields.selected);
     if (dto.loiStatus !== undefined && !becomingSelected) {
       throw new BadRequestException(
-        'LOI status can only be set after the candidate is Selected',
+        'LOI status can only be set after the candidate is Selected. Set Candidate Status to Selected first.',
       );
     }
+    if (becomingSelected) {
+      this.assertCanSelect({
+        stageCode,
+        clientShortlistDate: dto.clientShortlistDate,
+        loiStatus: dto.loiStatus,
+        requireLoi: true,
+      });
+    }
     const loiStatus = becomingSelected
-      ? dto.loiStatus !== undefined
-        ? parseLoiStatus(dto.loiStatus)
-        : LoiStatus.NOT_RECEIVED
+      ? parseLoiStatus(dto.loiStatus)
       : LoiStatus.NOT_RECEIVED;
 
     const row = await this.prisma.candidate.create({
@@ -793,7 +858,10 @@ export class CandidatesService {
   ): Promise<any> {
     const before = await this.prisma.candidate.findFirst({
       where: this.whereById(id),
-      include: { offer: true },
+      include: {
+        offer: { where: { deletedAt: null } },
+        onboarding: { where: { deletedAt: null } },
+      },
     });
     if (!before) throw new NotFoundException('Candidate not found');
     await this.requirements.assertActorCanMutateCandidates(
@@ -815,6 +883,12 @@ export class CandidatesService {
       : before.emailNormalized;
 
     const statusFields = this.resolveStatusFields(dto, Boolean(before.offer));
+    if (
+      dto.interviewRound !== undefined &&
+      (dto.interviewRound === null || String(dto.interviewRound).trim() === '')
+    ) {
+      this.assertRequiredInterviewRound(dto.interviewRound);
+    }
     const stageCode =
       dto.stageCode !== undefined
         ? await this.assertStageCode(dto.stageCode)
@@ -824,23 +898,69 @@ export class CandidatesService {
         ? await this.assertInterviewRound(dto.interviewRound)
         : undefined;
 
+    const nextStageCode = stageCode ?? before.stageCode;
+    const nextShortlistDate =
+      dto.clientShortlistDate !== undefined
+        ? dto.clientShortlistDate
+        : before.clientShortlistDate;
+    this.assertShortlistDateWhenShortlisted(nextStageCode, nextShortlistDate);
+
     const nextSelected =
       statusFields.selected !== undefined
         ? Boolean(statusFields.selected)
         : before.selected;
+    const becomingSelected = nextSelected && !before.selected;
 
     let nextLoiStatus: LoiStatus | undefined;
     if (dto.loiStatus !== undefined) {
       if (!nextSelected) {
         throw new BadRequestException(
-          'LOI status can only be set after the candidate is Selected',
+          'LOI status can only be set after the candidate is Selected. Set Candidate Status to Selected first.',
         );
       }
       nextLoiStatus = parseLoiStatus(dto.loiStatus);
-    } else if (statusFields.selected === true && !before.selected) {
-      nextLoiStatus = LoiStatus.NOT_RECEIVED;
+    } else if (becomingSelected) {
+      throw new BadRequestException(
+        'LOI is required when Candidate Status is Selected.',
+      );
     } else if (statusFields.selected === false) {
       nextLoiStatus = LoiStatus.NOT_RECEIVED;
+    }
+
+    if (becomingSelected || (nextSelected && dto.candidateStatus?.trim().toLowerCase() === 'selected')) {
+      this.assertCanSelect({
+        stageCode: nextStageCode,
+        clientShortlistDate: nextShortlistDate,
+        loiStatus: dto.loiStatus ?? before.loiStatus,
+        requireLoi: becomingSelected || dto.loiStatus !== undefined,
+      });
+    }
+
+    const liveOffer =
+      before.offer && !(before.offer as { deletedAt?: Date | null }).deletedAt
+        ? before.offer
+        : null;
+    const loiRollbackToNotReceived =
+      Boolean(liveOffer) &&
+      nextSelected &&
+      nextLoiStatus === LoiStatus.NOT_RECEIVED &&
+      before.loiStatus !== LoiStatus.NOT_RECEIVED;
+
+    if (loiRollbackToNotReceived && liveOffer) {
+      const now = new Date();
+      await this.prisma.$transaction(async (tx) => {
+        await tx.onboarding.updateMany({
+          where: {
+            candidateId: before.id,
+            deletedAt: null,
+          },
+          data: { deletedAt: now },
+        });
+        await tx.offer.update({
+          where: { id: liveOffer.id },
+          data: { deletedAt: now },
+        });
+      });
     }
 
     const row = await this.prisma.candidate.update({
@@ -896,13 +1016,16 @@ export class CandidatesService {
     await this.audit.log({
       entityType: 'Candidate',
       entityId: before.id,
-      action: 'UPDATE',
+      action: loiRollbackToNotReceived ? 'LOI_ROLLBACK' : 'UPDATE',
       actorUserId: actor.id,
       before,
       after: row,
     });
 
-    if (row.selected && isLoiEligibleForOffer(row.loiStatus) && !before.offer) {
+    const hasLiveOffer = Boolean(
+      row.offer && !(row.offer as { deletedAt?: Date | null }).deletedAt,
+    );
+    if (row.selected && isLoiEligibleForOffer(row.loiStatus) && !hasLiveOffer) {
       await this.offers.ensureForSelectedCandidate(row.id, actor.id);
     }
     if (row.selected && !before.selected) {
@@ -922,13 +1045,18 @@ export class CandidatesService {
       ...this.toCandidateResponse(refreshed ?? row),
       ...flags,
     };
-    return this.wrapCandidate(mapped, 'Candidate updated successfully');
+    const message = loiRollbackToNotReceived
+      ? 'LOI set to Not Received. The offer (and onboarding, if any) was removed. The candidate is back in Selected. Set LOI to Received or Not Applicable to create a new offer.'
+      : 'Candidate updated successfully';
+    return this.wrapCandidate(mapped, message);
   }
 
   async select(id: string, selected: boolean, actor: AuthUser): Promise<any> {
     const before = await this.prisma.candidate.findFirst({
       where: this.whereById(id),
-      include: { offer: true },
+      include: {
+        offer: { where: { deletedAt: null } },
+      },
     });
     if (!before) throw new NotFoundException('Candidate not found');
     await this.requirements.assertActorCanMutateCandidates(
@@ -942,8 +1070,15 @@ export class CandidatesService {
     this.assertRequirementAllowsRecruiting(req.status);
     if (!selected && before.offer) {
       throw new BadRequestException(
-        'Cannot unselect candidate with an existing offer',
+        'Cannot unselect candidate with an existing offer. Set LOI to Not Received first to remove the offer, or keep the candidate Selected.',
       );
+    }
+    if (selected) {
+      this.assertCanSelect({
+        stageCode: before.stageCode,
+        clientShortlistDate: before.clientShortlistDate,
+        requireLoi: false,
+      });
     }
     const row = await this.prisma.candidate.update({
       where: { id: before.id },
@@ -988,6 +1123,52 @@ export class CandidatesService {
       },
     });
     return this.toCandidateResponse(refreshed ?? row);
+  }
+
+  async softDelete(id: string, actor: AuthUser): Promise<{ message: string; id: string }> {
+    const before = await this.prisma.candidate.findFirst({
+      where: this.whereById(id),
+      include: {
+        offer: { where: { deletedAt: null } },
+        onboarding: { where: { deletedAt: null } },
+      },
+    });
+    if (!before) throw new NotFoundException('Candidate not found');
+
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      if (before.onboarding) {
+        await tx.onboarding.update({
+          where: { id: before.onboarding.id },
+          data: { deletedAt: now },
+        });
+      }
+      if (before.offer) {
+        await tx.offer.update({
+          where: { id: before.offer.id },
+          data: { deletedAt: now },
+        });
+      }
+      await tx.candidate.update({
+        where: { id: before.id },
+        data: { deletedAt: now },
+      });
+    });
+
+    await this.audit.log({
+      entityType: 'Candidate',
+      entityId: before.id,
+      action: 'DELETE',
+      actorUserId: actor.id,
+      before,
+      after: { deletedAt: now },
+    });
+
+    return {
+      id: before.id,
+      message:
+        'Candidate deleted. Linked offer and onboarding (if any) were also removed from active views.',
+    };
   }
 
   async uploadResume(
@@ -1245,6 +1426,7 @@ export class CandidatesService {
             stageCode: 'SUBMITTED_TO_SPOC',
             candidateStatus: 'Pending',
             profileSubmittedDate: today,
+            interviewRound: 'L1',
             position: req.roleSkill,
             jobFamily: undefined,
           },

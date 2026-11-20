@@ -91,16 +91,19 @@ describe('Requirements integration (Phase C)', () => {
       salesOwnerId: personas.SALES_LEAD.id,
       priorityCode: 'MEDIUM',
     });
+    const today = new Date().toISOString().slice(0, 10);
     const put = await api('PUT', `/requirements/${leadReq.row.id}`, {
       token: personas.SALES.token,
       body: {
-        requirementDate: new Date().toISOString().slice(0, 10),
+        requirementDate: today,
         clientId,
         roleSkill: 'Stolen',
         jobFamilyId,
         numberOfPositions: 1,
         salesOwnerId: personas.SALES.id,
         priorityCode: 'HIGH',
+        taHandoffDate: today,
+        targetClosureDate: today,
       },
     });
     expect(put.status).toBe(403);
@@ -198,5 +201,42 @@ describe('Requirements integration (Phase C)', () => {
       { token: personas.SALES.token },
     );
     expect(res.status).toBe(404);
+  });
+
+  it('IT-REQ-DATES: create without TA handoff / target closure → 400', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const noHandoff = await api('POST', '/requirements', {
+      token: personas.SALES.token,
+      body: {
+        requirementDate: today,
+        clientId,
+        roleSkill: `NoHandoff ${uniqueSuffix()}`,
+        jobFamilyId,
+        numberOfPositions: 1,
+        salesOwnerId: personas.SALES.id,
+        priorityCode: 'HIGH',
+        targetClosureDate: today,
+      },
+    });
+    expect(noHandoff.status).toBe(400);
+    const handoffMsg = JSON.stringify(noHandoff.data);
+    expect(handoffMsg.toLowerCase()).toMatch(/handoff|ta handoff/);
+
+    const noTarget = await api('POST', '/requirements', {
+      token: personas.SALES.token,
+      body: {
+        requirementDate: today,
+        clientId,
+        roleSkill: `NoTarget ${uniqueSuffix()}`,
+        jobFamilyId,
+        numberOfPositions: 1,
+        salesOwnerId: personas.SALES.id,
+        priorityCode: 'HIGH',
+        taHandoffDate: today,
+      },
+    });
+    expect(noTarget.status).toBe(400);
+    const targetMsg = JSON.stringify(noTarget.data);
+    expect(targetMsg.toLowerCase()).toMatch(/target closure|targetclosure/);
   });
 });

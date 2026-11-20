@@ -50,13 +50,13 @@
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--hover);
+  background: transparent;
 }
 
 .excel-download-row {
   display: flex;
   justify-content: flex-end;
-  margin: 0 0 10px;
+  /* margin: 0 0 10px; */
 }
 
 .excel-download-btn {

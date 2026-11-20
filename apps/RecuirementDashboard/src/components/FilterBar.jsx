@@ -1,13 +1,202 @@
-// Dropdown filter bar. Each filter defaults to "All" and filters the rows.
-// Options are derived from the data so they stay in sync with the API response.
+// // Dropdown filter bar. Each filter defaults to "All" and filters the rows.
+// // Options are derived from the data so they stay in sync with the API response.
+
+// import {
+//   IconUser, IconUsers, IconBriefcase, IconTarget, IconFilter, IconFolderOpen, IconCalendar, IconX,
+// } from './Icons';
+// import InfoTip from './InfoTip';
+
+// function uniqueValues(rows, key) {
+//   const values = Array.from(new Set(rows.map((r) => r[key]).filter(Boolean))).sort();
+//   return values.map((value) => ({ value, label: value }));
+// }
+
+// function resolveLabel(list, value) {
+//   const found = (list || []).find((item) => {
+//     const v = typeof item === 'string' ? item : item.value;
+//     return String(v) === String(value);
+//   });
+//   if (!found) return value;
+//   return typeof found === 'string' ? found : found.label;
+// }
+
+// const EMPTY_DATES = [
+//   ['fromDate', ''],
+//   ['toDate', ''],
+//   ['profileSubmittedFrom', ''],
+//   ['profileSubmittedTo', ''],
+// ];
+
+// export default function FilterBar({ rows, filters, onChange, options = {} }) {
+//   const fields = [
+//     { key: 'taOwner', label: 'TA Owner', Icon: IconUser },
+//     { key: 'salesOwner', label: 'Sales Owner', Icon: IconUsers },
+//     { key: 'client', label: 'Client', Icon: IconBriefcase },
+//     { key: 'jobFamily', label: 'Job Family', Icon: IconFolderOpen },
+//     { key: 'priority', label: 'Priority', Icon: IconTarget },
+//   ];
+
+//   const handle = (key, value) => onChange({ ...filters, [key]: value });
+
+//   const clearAll = () =>
+//     onChange(Object.fromEntries(fields.map((f) => [f.key, 'All']).concat(EMPTY_DATES)));
+
+//   const activeCount =
+//     fields.filter((f) => filters[f.key] !== 'All').length +
+//     (filters.fromDate ? 1 : 0) +
+//     (filters.toDate ? 1 : 0) +
+//     (filters.profileSubmittedFrom ? 1 : 0) +
+//     (filters.profileSubmittedTo ? 1 : 0);
+
+//   const chips = [
+//     ...fields
+//       .filter((f) => filters[f.key] && filters[f.key] !== 'All')
+//       .map((f) => ({
+//         key: f.key,
+//         label: `${f.label}: ${resolveLabel(options[f.key] || uniqueValues(rows, f.key), filters[f.key])}`,
+//         reset: () => handle(f.key, 'All'),
+//       })),
+//     filters.fromDate
+//       ? { key: 'fromDate', label: `Requirement from ${filters.fromDate}`, reset: () => handle('fromDate', '') }
+//       : null,
+//     filters.toDate
+//       ? { key: 'toDate', label: `Requirement to ${filters.toDate}`, reset: () => handle('toDate', '') }
+//       : null,
+//     filters.profileSubmittedFrom
+//       ? {
+//           key: 'profileSubmittedFrom',
+//           label: `Sourcing from ${filters.profileSubmittedFrom}`,
+//           reset: () => handle('profileSubmittedFrom', ''),
+//         }
+//       : null,
+//     filters.profileSubmittedTo
+//       ? {
+//           key: 'profileSubmittedTo',
+//           label: `Sourcing to ${filters.profileSubmittedTo}`,
+//           reset: () => handle('profileSubmittedTo', ''),
+//         }
+//       : null,
+//   ].filter(Boolean);
+
+//   return (
+//     <div className="filter-bar">
+//       <div className="filter-bar-head">
+//         <IconFilter />
+//         <span>Filters</span>
+//         <InfoTip
+//           inline
+//           text="Narrows every metric, chart, and owner table by TA owner, sales owner, client, job family, priority, requirement date, and sourcing date. Requirement date scopes which requirements are included. Sourcing scopes candidate pipeline metrics by profile submitted date; when set, requirement metrics also require at least one matching submission."
+//         />
+//         {activeCount > 0 && <span className="filter-count">{activeCount} active</span>}
+//         {activeCount > 0 && (
+//           <button type="button" className="filter-clear" onClick={clearAll}>
+//             Clear
+//           </button>
+//         )}
+//       </div>
+
+//       {chips.length > 0 && (
+//         <div className="filter-chips" aria-label="Active filters">
+//           {chips.map((chip) => (
+//             <button
+//               key={chip.key}
+//               type="button"
+//               className="filter-chip"
+//               onClick={chip.reset}
+//               title={`Remove ${chip.label}`}
+//             >
+//               {chip.label}
+//               <IconX width={12} height={12} />
+//             </button>
+//           ))}
+//         </div>
+//       )}
+
+//       <div className="filter-fields">
+//         {fields.map((f) => (
+//           <label key={f.key} className="filter-field">
+//             <span className="filter-label">
+//               <f.Icon />
+//               {f.label}
+//             </span>
+//             <select
+//               value={filters[f.key]}
+//               onChange={(e) => handle(f.key, e.target.value)}
+//             >
+//               <option value="All">All</option>
+//               {(options[f.key] || uniqueValues(rows, f.key)).map((item) => {
+//                 const value = typeof item === 'string' ? item : item.value;
+//                 const label = typeof item === 'string' ? item : item.label;
+//                 return (
+//                   <option key={value} value={value}>{label}</option>
+//                 );
+//               })}
+//             </select>
+//           </label>
+//         ))}
+
+//         <div className="filter-field filter-date-range">
+//           <span className="filter-label">
+//             <IconCalendar />
+//             Requirement Date
+//           </span>
+//           <div className="filter-date-pair">
+//             <input
+//               type="date"
+//               value={filters.fromDate || ''}
+//               onChange={(e) => handle('fromDate', e.target.value)}
+//               aria-label="Requirement date from"
+//             />
+//             <span className="filter-date-sep" aria-hidden="true">–</span>
+//             <input
+//               type="date"
+//               value={filters.toDate || ''}
+//               onChange={(e) => handle('toDate', e.target.value)}
+//               aria-label="Requirement date to"
+//             />
+//           </div>
+//         </div>
+
+//         <div className="filter-field filter-date-range">
+//           <span className="filter-label">
+//             <IconCalendar />
+//             Sourcing
+//           </span>
+//           <div className="filter-date-pair">
+//             <input
+//               type="date"
+//               value={filters.profileSubmittedFrom || ''}
+//               onChange={(e) => handle('profileSubmittedFrom', e.target.value)}
+//               aria-label="Sourcing from"
+//             />
+//             <span className="filter-date-sep" aria-hidden="true">–</span>
+//             <input
+//               type="date"
+//               value={filters.profileSubmittedTo || ''}
+//               onChange={(e) => handle('profileSubmittedTo', e.target.value)}
+//               aria-label="Sourcing to"
+//             />
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+import { useState } from 'react';
 
 import {
-  IconUser, IconUsers, IconBriefcase, IconTarget, IconFilter, IconFolderOpen, IconCalendar, IconX,
+  IconUser, IconUsers, IconBriefcase, IconTarget, IconFilter,
+  IconFolderOpen, IconCalendar, IconX,
 } from './Icons';
+
 import InfoTip from './InfoTip';
 
 function uniqueValues(rows, key) {
-  const values = Array.from(new Set(rows.map((r) => r[key]).filter(Boolean))).sort();
+  const values = Array.from(
+    new Set(rows.map((r) => r[key]).filter(Boolean))
+  ).sort();
+
   return values.map((value) => ({ value, label: value }));
 }
 
@@ -16,6 +205,7 @@ function resolveLabel(list, value) {
     const v = typeof item === 'string' ? item : item.value;
     return String(v) === String(value);
   });
+
   if (!found) return value;
   return typeof found === 'string' ? found : found.label;
 }
@@ -27,7 +217,15 @@ const EMPTY_DATES = [
   ['profileSubmittedTo', ''],
 ];
 
-export default function FilterBar({ rows, filters, onChange, options = {} }) {
+export default function FilterBar({  rows,
+  filters,
+  onChange,
+  options = {},
+  isExpanded,
+  onToggle, }) {
+
+  // Accordion collapsed by default
+
   const fields = [
     { key: 'taOwner', label: 'TA Owner', Icon: IconUser },
     { key: 'salesOwner', label: 'Sales Owner', Icon: IconUsers },
@@ -36,10 +234,15 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
     { key: 'priority', label: 'Priority', Icon: IconTarget },
   ];
 
-  const handle = (key, value) => onChange({ ...filters, [key]: value });
+  const handle = (key, value) =>
+    onChange({ ...filters, [key]: value });
 
   const clearAll = () =>
-    onChange(Object.fromEntries(fields.map((f) => [f.key, 'All']).concat(EMPTY_DATES)));
+    onChange(
+      Object.fromEntries(
+        fields.map((f) => [f.key, 'All']).concat(EMPTY_DATES)
+      )
+    );
 
   const activeCount =
     fields.filter((f) => filters[f.key] !== 'All').length +
@@ -53,15 +256,29 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
       .filter((f) => filters[f.key] && filters[f.key] !== 'All')
       .map((f) => ({
         key: f.key,
-        label: `${f.label}: ${resolveLabel(options[f.key] || uniqueValues(rows, f.key), filters[f.key])}`,
+        label: `${f.label}: ${resolveLabel(
+          options[f.key] || uniqueValues(rows, f.key),
+          filters[f.key]
+        )}`,
         reset: () => handle(f.key, 'All'),
       })),
+
     filters.fromDate
-      ? { key: 'fromDate', label: `Requirement from ${filters.fromDate}`, reset: () => handle('fromDate', '') }
+      ? {
+          key: 'fromDate',
+          label: `Requirement from ${filters.fromDate}`,
+          reset: () => handle('fromDate', ''),
+        }
       : null,
+
     filters.toDate
-      ? { key: 'toDate', label: `Requirement to ${filters.toDate}`, reset: () => handle('toDate', '') }
+      ? {
+          key: 'toDate',
+          label: `Requirement to ${filters.toDate}`,
+          reset: () => handle('toDate', ''),
+        }
       : null,
+
     filters.profileSubmittedFrom
       ? {
           key: 'profileSubmittedFrom',
@@ -69,6 +286,7 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
           reset: () => handle('profileSubmittedFrom', ''),
         }
       : null,
+
     filters.profileSubmittedTo
       ? {
           key: 'profileSubmittedTo',
@@ -79,106 +297,167 @@ export default function FilterBar({ rows, filters, onChange, options = {} }) {
   ].filter(Boolean);
 
   return (
-    <div className="filter-bar">
+    <div className={`filter-bar ${isExpanded ? 'expanded' : 'collapsed'}`}>
+
+      {/* Filter Header */}
       <div className="filter-bar-head">
-        <IconFilter />
-        <span>Filters</span>
-        <InfoTip
-          inline
-          text="Narrows every metric, chart, and owner table by TA owner, sales owner, client, job family, priority, requirement date, and sourcing date. Requirement date scopes which requirements are included. Sourcing scopes candidate pipeline metrics by profile submitted date; when set, requirement metrics also require at least one matching submission."
-        />
-        {activeCount > 0 && <span className="filter-count">{activeCount} active</span>}
-        {activeCount > 0 && (
-          <button type="button" className="filter-clear" onClick={clearAll}>
-            Clear
-          </button>
-        )}
+
+        <div className="filter-heading">
+          <IconFilter />
+
+          <span className="filter-label">Filters</span>
+
+          <InfoTip
+            inline
+            text="Narrows every metric, chart, and owner table by TA owner, sales owner, client, job family, priority, requirement date, and sourcing date. Requirement date scopes which requirements are included. Sourcing scopes candidate pipeline metrics by profile submitted date; when set, requirement metrics also require at least one matching submission."
+          />
+
+          {activeCount > 0 && (
+            <span className="filter-count">
+              {activeCount}
+            </span>
+          )}
+        </div>
+
+        <div className="filter-header-actions">
+
+          {activeCount > 0 && (
+            <button
+              type="button"
+              className="filter-clear"
+              onClick={clearAll}
+            >
+              Clear
+            </button>
+          )}
+
+         <button
+  type="button"
+  className="filter-toggle"
+  onClick={onToggle}
+  aria-expanded={isExpanded}
+  aria-controls="filter-fields-content"
+>
+  {isExpanded ? 'HIDE FILTERS' : 'SHOW FILTERS'}
+</button>
+
+        </div>
       </div>
 
-      {chips.length > 0 && (
-        <div className="filter-chips" aria-label="Active filters">
-          {chips.map((chip) => (
-            <button
-              key={chip.key}
-              type="button"
-              className="filter-chip"
-              onClick={chip.reset}
-              title={`Remove ${chip.label}`}
-            >
-              {chip.label}
-              <IconX width={12} height={12} />
-            </button>
-          ))}
+      {/* Collapsible Filter Content */}
+      {isExpanded && (
+        <div id="filter-fields-content" className="filter-content">
+
+          {/* Active Filter Chips */}
+          {chips.length > 0 && (
+            <div className="filter-chips" aria-label="Active filters">
+              {chips.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  className="filter-chip"
+                  onClick={chip.reset}
+                  title={`Remove ${chip.label}`}
+                >
+                  {chip.label}
+                  <IconX width={12} height={12} />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Dropdowns and Date Filters */}
+          <div className="filter-fields">
+
+            {fields.map((f) => (
+              <label key={f.key} className="filter-field">
+
+                <span className="filter-label">
+                  <f.Icon />
+                  {f.label}
+                </span>
+
+                <select
+                  value={filters[f.key]}
+                  onChange={(e) => handle(f.key, e.target.value)}
+                >
+                  <option value="All">All</option>
+
+                  {(options[f.key] || uniqueValues(rows, f.key)).map((item) => {
+                    const value = typeof item === 'string' ? item : item.value;
+                    const label = typeof item === 'string' ? item : item.label;
+
+                    return (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+
+              </label>
+            ))}
+
+            {/* Requirement Date */}
+            <div className="filter-field filter-date-range">
+
+              <span className="filter-label">
+                <IconCalendar />
+                Requirement Date
+              </span>
+
+              <div className="filter-date-pair">
+                <input
+                  type="date"
+                  value={filters.fromDate || ''}
+                  onChange={(e) => handle('fromDate', e.target.value)}
+                  aria-label="Requirement date from"
+                />
+
+                <span className="filter-date-sep" aria-hidden="true">–</span>
+
+                <input
+                  type="date"
+                  value={filters.toDate || ''}
+                  onChange={(e) => handle('toDate', e.target.value)}
+                  aria-label="Requirement date to"
+                />
+              </div>
+
+            </div>
+
+            {/* Sourcing Date */}
+            <div className="filter-field filter-date-range">
+
+              <span className="filter-label">
+                <IconCalendar />
+                Sourcing
+              </span>
+
+              <div className="filter-date-pair">
+                <input
+                  type="date"
+                  value={filters.profileSubmittedFrom || ''}
+                  onChange={(e) => handle('profileSubmittedFrom', e.target.value)}
+                  aria-label="Sourcing from"
+                />
+
+                <span className="filter-date-sep" aria-hidden="true">–</span>
+
+                <input
+                  type="date"
+                  value={filters.profileSubmittedTo || ''}
+                  onChange={(e) => handle('profileSubmittedTo', e.target.value)}
+                  aria-label="Sourcing to"
+                />
+              </div>
+
+            </div>
+
+          </div>
         </div>
       )}
 
-      <div className="filter-fields">
-        {fields.map((f) => (
-          <label key={f.key} className="filter-field">
-            <span className="filter-label">
-              <f.Icon />
-              {f.label}
-            </span>
-            <select
-              value={filters[f.key]}
-              onChange={(e) => handle(f.key, e.target.value)}
-            >
-              <option value="All">All</option>
-              {(options[f.key] || uniqueValues(rows, f.key)).map((item) => {
-                const value = typeof item === 'string' ? item : item.value;
-                const label = typeof item === 'string' ? item : item.label;
-                return (
-                  <option key={value} value={value}>{label}</option>
-                );
-              })}
-            </select>
-          </label>
-        ))}
-
-        <div className="filter-field filter-date-range">
-          <span className="filter-label">
-            <IconCalendar />
-            Requirement Date
-          </span>
-          <div className="filter-date-pair">
-            <input
-              type="date"
-              value={filters.fromDate || ''}
-              onChange={(e) => handle('fromDate', e.target.value)}
-              aria-label="Requirement date from"
-            />
-            <span className="filter-date-sep" aria-hidden="true">–</span>
-            <input
-              type="date"
-              value={filters.toDate || ''}
-              onChange={(e) => handle('toDate', e.target.value)}
-              aria-label="Requirement date to"
-            />
-          </div>
-        </div>
-
-        <div className="filter-field filter-date-range">
-          <span className="filter-label">
-            <IconCalendar />
-            Sourcing
-          </span>
-          <div className="filter-date-pair">
-            <input
-              type="date"
-              value={filters.profileSubmittedFrom || ''}
-              onChange={(e) => handle('profileSubmittedFrom', e.target.value)}
-              aria-label="Sourcing from"
-            />
-            <span className="filter-date-sep" aria-hidden="true">–</span>
-            <input
-              type="date"
-              value={filters.profileSubmittedTo || ''}
-              onChange={(e) => handle('profileSubmittedTo', e.target.value)}
-              aria-label="Sourcing to"
-            />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

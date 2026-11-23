@@ -1,0 +1,190 @@
+/* =========================================
+   FIXED SIDEBAR LAYOUT
+========================================= */
+
+.dashboard {
+  min-height: 100vh;
+}
+
+/* Sidebar stays fixed while dashboard content scrolls */
+.dashboard .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  width: 248px;
+  height: 100vh;
+  height: 100dvh;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+  z-index: 100;
+
+  padding: 18px 12px 14px;
+  gap: 0;
+
+  transition: width 0.25s ease;
+}
+
+/* Top section */
+.dashboard .sidebar-top {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 0 8px 18px;
+}
+
+/* Scrollable navigation only */
+.dashboard .sidebar-nav {
+  flex: 1;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  padding: 4px 0 14px;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb, #64748b) transparent;
+
+  /* IE */
+  -ms-overflow-style: none;
+}
+
+/* Chrome, Edge, Safari */
+.dashboard .sidebar-nav::-webkit-scrollbar {
+  width: 3px;
+}
+
+.dashboard .sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dashboard .sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #64748b);
+  border-radius: 10px;
+}
+
+.dashboard .sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, #94a3b8);
+}
+
+
+/* Footer remains at the bottom */
+.dashboard .sidebar-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  padding-top: 12px;
+
+  border-top: 1px solid var(--border-color);
+}
+
+/* Main content offset */
+.dashboard .main-dashboard {
+  margin-left: 196px;
+  min-width: 0;
+  min-height: 100vh;
+
+  transition: margin-left 0.25s ease;
+}
+
+/* Collapsed sidebar */
+.dashboard .sidebar.is-collapsed {
+  width: 76px;
+}
+
+.dashboard .sidebar.is-collapsed ~ .main-dashboard {
+  margin-left: 71px;
+}
+
+/* Keep footer controls aligned when collapsed */
+.dashboard .sidebar.is-collapsed .sidebar-top {
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.dashboard .sidebar.is-collapsed .role-pill {
+  display: none;
+}
+
+.dashboard .sidebar.is-collapsed .user-chip {
+  justify-content: center;
+}
+
+.dashboard .sidebar.is-collapsed .user-meta,
+.dashboard .sidebar.is-collapsed .sidebar-nav button span,
+.dashboard .sidebar.is-collapsed .sidebar-collapse-btn span,
+.dashboard .sidebar.is-collapsed .logout-btn span {
+  display: none;
+}
+
+.dashboard .sidebar.is-collapsed .sidebar-nav button,
+.dashboard .sidebar.is-collapsed .sidebar-collapse-btn,
+.dashboard .sidebar.is-collapsed .logout-btn {
+  justify-content: center;
+}
+
+.dashboard .sidebar.is-collapsed .sidebar-footer {
+  align-items: center;
+}
+
+.dashboard .sidebar.is-collapsed .sidebar-nav {
+  align-items: center;
+}
+
+.dashboard .sidebar.is-collapsed .sidebar-nav button {
+  width: 44px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard .sidebar {
+    width: 76px;
+  }
+
+  .dashboard .sidebar .sidebar-top {
+    align-items: center;
+  }
+
+  .dashboard .sidebar .role-pill,
+  .dashboard .sidebar .user-meta,
+  .dashboard .sidebar .sidebar-nav button span,
+  .dashboard .sidebar .sidebar-collapse-btn span,
+  .dashboard .sidebar .logout-btn span {
+    display: none;
+  }
+
+  .dashboard .sidebar .sidebar-nav {
+    align-items: center;
+  }
+
+  .dashboard .sidebar .sidebar-nav button {
+    justify-content: center;
+    width: 44px;
+  }
+
+  .dashboard .sidebar .sidebar-collapse-btn,
+  .dashboard .sidebar .logout-btn {
+    justify-content: center;
+  }
+
+  .dashboard .main-dashboard {
+    margin-left: 76px;
+  }
+}

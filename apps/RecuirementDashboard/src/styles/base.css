@@ -26,10 +26,10 @@ button, input, select, textarea {
   outline: none;
 }
 
-:where(button, a, input, select, textarea, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+/* :where(button, a, input, select, textarea, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
-}
+} */
 
 /* Typography helpers */
 .t-display { font-size: var(--text-display); font-weight: var(--font-weight-bold); line-height: var(--leading-tight); }

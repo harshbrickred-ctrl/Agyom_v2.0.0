@@ -35,6 +35,7 @@ import MyTasksScreen from './roles/MyTasksScreen';
 import TaLeadAssignScreen from './roles/TaLeadAssignScreen';
 import MyWorkScreen from './roles/MyWorkScreen';
 import RequirementPipelineBoard from '../components/RequirementPipelineBoard';
+import './pageCss/Dashboard.css';
 
 // Map each user type to the screen component it can visit.
 // (Admin has no dedicated tab — "Add request" replaces it.)
@@ -483,64 +484,68 @@ export default function Dashboard() {
   return (
     <div className="dashboard" data-ui-levels="L1 L2 L3 L4 L5 L6">
       {/* Sidebar — narrow, icon-led navigation */}
-      <aside className={`sidebar${sidebarCollapsed ? ' is-collapsed' : ''}`}>
-        <div className="sidebar-brand">
-          <Logo size={40} />
-        </div>
-        <span className="role-pill">{USER_TYPE_LABELS[userType]}</span>
+    <aside className={`sidebar${sidebarCollapsed ? ' is-collapsed' : ''}`}>
+  <div className="sidebar-top">
+    <div className="sidebar-brand">
+      <Logo size={40} />
+    </div>
 
-        <nav className="sidebar-nav">
-          <button
-            className={activeTab === 'overview' ? 'active' : ''}
-            onClick={() => setActiveTab('overview')}
-            title="Dashboard"
-          >
-            <IconDashboard />
-            <span>Dashboard</span>
-          </button>
+    <span className="role-pill">{USER_TYPE_LABELS[userType]}</span>
+  </div>
 
-          {/* Secondary tabs — restricted by user type (Dashboard + one role tab) */}
-          {SECONDARY_TABS[userType]?.map((t) => {
-            const TabIcon = t.icon;
-            return (
-              <button
-                key={t.key}
-                className={activeTab === t.key ? 'active' : ''}
-                onClick={() => setActiveTab(t.key)}
-                title={t.label}
-              >
-                <TabIcon />
-                <span>{t.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+  <nav className="sidebar-nav">
+    <button
+      className={activeTab === 'overview' ? 'active' : ''}
+      onClick={() => setActiveTab('overview')}
+      title="Dashboard"
+    >
+      <IconDashboard />
+      <span>Dashboard</span>
+    </button>
 
-        <div className="sidebar-footer">
-          <div className="user-chip">
-            <div className="avatar">{user?.name?.[0] || 'U'}</div>
-            <div className="user-meta">
-              <strong>{user?.name}</strong>
-              <span>{USER_TYPE_LABELS[userType]}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="sidebar-collapse-btn"
-            onClick={() => setSidebarCollapsed((v) => !v)}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {sidebarCollapsed ? <IconChevronsRight /> : <IconChevronsLeft />}
-            <span>{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
-          </button>
-          <button className="logout-btn" onClick={logout}>
-            <IconLogout />
-            <span>Log out</span>
-          </button>
-        </div>
-      </aside>
+    {SECONDARY_TABS[userType]?.map((t) => {
+      const TabIcon = t.icon;
 
+      return (
+        <button
+          key={t.key}
+          className={activeTab === t.key ? 'active' : ''}
+          onClick={() => setActiveTab(t.key)}
+          title={t.label}
+        >
+          <TabIcon />
+          <span>{t.label}</span>
+        </button>
+      );
+    })}
+  </nav>
+
+  <div className="sidebar-footer">
+    <div className="user-chip">
+      <div className="avatar">{user?.name?.[0] || 'U'}</div>
+      <div className="user-meta">
+        <strong>{user?.name}</strong>
+        <span>{USER_TYPE_LABELS[userType]}</span>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      className="sidebar-collapse-btn"
+      onClick={() => setSidebarCollapsed((v) => !v)}
+      title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+    >
+      {sidebarCollapsed ? <IconChevronsRight /> : <IconChevronsLeft />}
+      <span>{sidebarCollapsed ? 'Expand' : 'Collapse'}</span>
+    </button>
+
+    <button className="logout-btn" onClick={logout}>
+      <IconLogout />
+      <span>Log out</span>
+    </button>
+  </div>
+</aside>
 
       <div className="main-dashboard">
         <header className="topbar">

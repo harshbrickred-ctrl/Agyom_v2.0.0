@@ -19,6 +19,7 @@ import { fetchAllPages } from '../../utils/fetchAllPages';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
+import './../pageCss/AssignTaskScreen.css';
 
 const FALLBACK_STAGES = [
   { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to Internal Sales Team' },
@@ -193,6 +194,7 @@ export default function AssignTaskScreen() {
   const listSearchQ = useDebouncedValue(listSearch);
   const [taskSearch, setTaskSearch] = useState('');
   const taskSearchQ = useDebouncedValue(taskSearch);
+  const [activeTaskStatus, setActiveTaskStatus] = useState('ACTIVE');
   const [duplicateLookup, setDuplicateLookup] = useState({
     loading: false,
     data: null,
@@ -537,18 +539,52 @@ export default function AssignTaskScreen() {
   const visibleTasks = tasks.filter((t) =>
     matchesQuery(taskSearchQ, t.clientName, t.position, t.publicId, t.id),
   );
-  const tasksBySection = useMemo(() => {
-    const groups = Object.fromEntries(TASK_SECTIONS.map(({ status }) => [status, []]));
-    visibleTasks.forEach((t) => {
-      const status = t.status || 'ACTIVE';
-      if (groups[status]) groups[status].push(t);
-      else groups.ACTIVE.push(t);
-    });
-    TASK_SECTIONS.forEach(({ status }) => {
-      groups[status].sort((a, b) => taskUrgency(a) - taskUrgency(b));
-    });
-    return groups;
-  }, [visibleTasks]);
+  // const tasksBySection = useMemo(() => {
+  //   const groups = Object.fromEntries(TASK_SECTIONS.map(({ status }) => [status, []]));
+  //   visibleTasks.forEach((t) => {
+  //     const status = t.status || 'ACTIVE';
+  //     if (groups[status]) groups[status].push(t);
+  //     else groups.ACTIVE.push(t);
+  //   });
+  //   TASK_SECTIONS.forEach(({ status }) => {
+  //     groups[status].sort((a, b) => taskUrgency(a) - taskUrgency(b));
+  //   });
+  //   return groups;
+  // }, [visibleTasks]);
+
+  const taskCounts = useMemo(() => {
+  const counts = Object.fromEntries(
+    TASK_SECTIONS.map(({ status }) => [status, 0]),
+  );
+
+  tasks.forEach((task) => {
+    const status = String(task.status || 'ACTIVE').toUpperCase();
+
+    if (counts[status] !== undefined) {
+      counts[status] += 1;
+    } else {
+      counts.ACTIVE += 1;
+    }
+  });
+
+  return counts;
+}, [tasks]);
+
+const activeTasks = useMemo(
+  () =>
+    visibleTasks.filter((task) => {
+      const status = String(task.status || 'ACTIVE').toUpperCase();
+      const normalizedStatus = TASK_SECTIONS.some(
+        (section) => section.status === status,
+      )
+        ? status
+        : 'ACTIVE';
+
+      return normalizedStatus === activeTaskStatus;
+    }),
+  [visibleTasks, activeTaskStatus],
+);
+
   const displayedCandidates = (selectedTask?.candidates || []).filter((c) =>
     matchesQuery(
       listSearchQ,
@@ -1093,66 +1129,101 @@ export default function AssignTaskScreen() {
 
   if (loading) return <ScreenSkeleton cards={0} rows={8} />;
 
-  const renderTaskCard = (t) => {
-    const openCount =
-      Number(t.noOfPositions) > 0
-        ? Math.max(Number(t.noOfPositions) - Number(t.closedPositions || 0), 0)
-        : '—';
-    return (
-      <div
-        key={t.id}
-        className={`task-card${t.isCompleted ? ' task-card--completed' : ''}`}
-        role="button"
-        tabIndex={0}
-        onClick={() => openTaskDetail(t)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            openTaskDetail(t);
-          }
-        }}
+ const renderTaskCard = (task) => {
+  const openCount =
+    Number(task.noOfPositions) > 0
+      ? Math.max(
+          Number(task.noOfPositions) - Number(task.closedPositions || 0),
+          0,
+        )
+      : '—';
+
+  const status = String(task.status || 'ACTIVE').toUpperCase();
+
+  return (
+    <article
+      key={task.id}
+      className={`ats-card${task.isCompleted ? ' ats-card--completed' : ''}`}
+    >
+      <button
+        type="button"
+        className="ats-card-main"
+        onClick={() => openTaskDetail(task)}
+        aria-label={`Open ${task.clientName} - ${task.position}`}
       >
-        <div className="task-card-top">
-          <span className="task-client">{t.clientName}</span>
-          <span className="task-count" title={`${t.candidates.length} candidates`}>
-            {t.candidates.length}
+        <div className="ats-card-top">
+          <div className="ats-card-title">
+            <strong>{task.clientName}</strong>
+            <span className="ats-candidate-count">
+              <IconClipboardCheck />
+              {task.candidates.length} candidates
+            </span>
+          </div>
+
+          <span className={`ats-status ats-status--${status.toLowerCase()}`}>
+            {status.replace(/_/g, ' ')}
           </span>
         </div>
-        <div className="task-pos">{t.position}</div>
-        <div className="task-card-foot">
-          <span className="task-card-id">{t.publicId || t.id}</span>
-          <span className={`yr-status ${(t.status || 'ACTIVE').toLowerCase()}`}>{t.status || 'ACTIVE'}</span>
-          {t.taHandoffSlaRag && t.taHandoffSlaRag !== 'NONE' && (
-            <span className={`yr-rag yr-rag--${String(t.taHandoffSlaRag).toLowerCase()}`}>{t.taHandoffSlaRag}</span>
+
+        <div className="ats-position">{task.position}</div>
+
+        <div className="ats-card-meta">
+          <span className="ats-req-id">
+            {task.publicId || task.id}
+          </span>
+
+          {task.taHandoffSlaRag && task.taHandoffSlaRag !== 'NONE' && (
+            <span
+              className={`ats-rag ats-rag--${String(
+                task.taHandoffSlaRag,
+              ).toLowerCase()}`}
+            >
+              {task.taHandoffSlaRag}
+            </span>
           )}
-          {t.isOverdue && <span className="task-overdue">Overdue</span>}
-          <span className="task-card-quiet">
-            Filled {t.closedPositions ?? 0}/{t.noOfPositions ?? '—'} · Open {openCount}
+
+          {task.isOverdue && (
+            <span className="ats-overdue">Overdue</span>
+          )}
+        </div>
+
+        <div className="ats-position-summary">
+          <span>
+            Filled <strong>{task.closedPositions ?? 0}</strong>
+            /{task.noOfPositions ?? '—'}
           </span>
+          <span>
+            Open <strong>{openCount}</strong>
+          </span>
+          {task.targetClosureDate && (
+            <span>
+              Target <strong>{formatDate(task.targetClosureDate, '—')}</strong>
+            </span>
+          )}
         </div>
-        <div
-          className="task-card-actions"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
+      </button>
+
+      <div className="ats-card-actions">
+        <button
+          type="button"
+          className="ats-action"
+          onClick={() => openTaskJd(task)}
         >
-          <button
-            type="button"
-            className="cand-edit"
-            onClick={() => openTaskJd(t)}
-          >
-            Job Description
-          </button>
-          <button
-            type="button"
-            className="cand-edit"
-            onClick={() => openTaskSourcing(t)}
-          >
-            Source
-          </button>
-        </div>
+          Job Description
+        </button>
+
+        <button
+          type="button"
+          className="ats-action ats-action--primary"
+          onClick={() => openTaskSourcing(task)}
+        >
+          <IconPlus />
+          Source
+        </button>
       </div>
-    );
-  };
+    </article>
+  );
+};
 
   return (
     <div className={`assign-task${showForm ? ' cand-form-open' : ''}`}>
@@ -1166,53 +1237,95 @@ export default function AssignTaskScreen() {
       </div>
 
       <div className="assign-body">
-        <div className="task-list">
-          {tasks.length > 0 && (
-            <label className="at-task-search">
-              <input
-                type="search"
-                value={taskSearch}
-                aria-label="Search tasks"
-                placeholder="Search client, role, req ID…"
-                onChange={(e) => setTaskSearch(e.target.value)}
-              />
-            </label>
-          )}
-          {tasks.length === 0 && (
-            <EmptyState
-              icon={IconClipboardCheck}
-              title="No tasks yet"
-              description="Requirements assigned to you will appear here."
-            />
-          )}
-          {tasks.length > 0 && visibleTasks.length === 0 && (
-            <EmptyState
-              icon={IconClipboardCheck}
-              title="No matching tasks"
-              description="Try a different search."
-            />
-          )}
-          {visibleTasks.length > 0 && (
-            <div className="task-list-sections">
-              {TASK_SECTIONS.map(({ status, label }) => {
-                const sectionTasks = tasksBySection[status] || [];
-                if (!sectionTasks.length) return null;
-                return (
-                  <section key={status} className="at-task-section" aria-label={label}>
-                    <div className="at-task-section-head">
-                      <h3 className="at-task-section-title">{label}</h3>
-                      <span className={`yr-status ${status.toLowerCase()}`}>{sectionTasks.length}</span>
-                    </div>
-                    <div className="task-list-scroll">
-                      {sectionTasks.map(renderTaskCard)}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
+  <div className="ats-list">
+    <div className="ats-toolbar">
+      <div className="ats-toolbar-info">
+        <h3 className="ats-section-title">Requirements</h3>
+        <span className="ats-total-count">{visibleTasks.length} total</span>
+      </div>
+
+      {tasks.length > 0 && (
+        <div className="ats-search">
+          <IconClipboardCheck />
+          <input
+            type="search"
+            value={taskSearch}
+            aria-label="Search requirements"
+            placeholder="Search client, position or Req ID..."
+            onChange={(e) => setTaskSearch(e.target.value)}
+          />
+          {taskSearch && (
+            <button
+              type="button"
+              className="ats-search-clear"
+              onClick={() => setTaskSearch('')}
+              aria-label="Clear search"
+            >
+              <IconX />
+            </button>
           )}
         </div>
-      </div>
+      )}
+    </div>
+
+    {tasks.length === 0 ? (
+      <EmptyState
+        icon={IconClipboardCheck}
+        title="No tasks yet"
+        description="Requirements assigned to you will appear here."
+      />
+    ) : (
+      <>
+        <div className="ats-tabs" role="tablist" aria-label="Requirement status">
+          {TASK_SECTIONS.map(({ status, label }) => (
+            <button
+              key={status}
+              type="button"
+              role="tab"
+              aria-selected={activeTaskStatus === status}
+              className={`ats-tab${activeTaskStatus === status ? ' is-active' : ''}`}
+              onClick={() => setActiveTaskStatus(status)}
+            >
+              <span>{label}</span>
+              <span className="ats-tab-count">{taskCounts[status] || 0}</span>
+            </button>
+          ))}
+        </div>
+
+        {visibleTasks.length === 0 ? (
+          <EmptyState
+            icon={IconClipboardCheck}
+            title="No matching requirements"
+            description="Try a different search term."
+          />
+        ) : (
+          <div className="ats-results">
+            <div className="ats-results-heading">
+              <span>
+                {TASK_SECTIONS.find(
+                  (section) => section.status === activeTaskStatus,
+                )?.label || 'Requirements'}
+              </span>
+              <span>{activeTasks.length} requirements</span>
+            </div>
+
+            {activeTasks.length > 0 ? (
+              <div className="ats-grid">
+                {activeTasks.map(renderTaskCard)}
+              </div>
+            ) : (
+              <EmptyState
+                icon={IconClipboardCheck}
+                title="No requirements in this status"
+                description="Choose another status to view requirements."
+              />
+            )}
+          </div>
+        )}
+      </>
+    )}
+  </div>
+</div>
 
       {showDetail && selectedTask && (
         <div

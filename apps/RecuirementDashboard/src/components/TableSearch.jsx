@@ -6,7 +6,7 @@ export default function TableSearch({
   return (
     <div className="table-toolbar">
       <label className="filter-field table-search">
-        <span className="filter-label">Search</span>
+        {/* <span className="filter-label">Search</span> */}
         <input
           type="search"
           value={value}

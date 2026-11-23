@@ -223,6 +223,6 @@ export class RequirementsController {
     @Body() dto: RequirementStatusDto,
     @CurrentUser() user: AuthUser,
   ): Promise<any> {
-    return this.requirements.setStatus(id, dto.status, user);
+    return this.requirements.setStatus(id, dto.status, user, dto.reason);
   }
 }

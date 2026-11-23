@@ -37,14 +37,12 @@ const LOOKUPS: Record<string, { code: string; label: string }[]> = {
     { code: 'LOW', label: 'Low' },
   ],
   CANDIDATE_STAGE: [
-    { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to SPOC' },
-    { code: 'CLIENT_SHORTLIST', label: 'Client Shortlist' },
-    { code: 'HOLD', label: 'Hold' },
+    { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to Internal Sales Team' },
+    { code: 'SUBMITTED_TO_CLIENT', label: 'Submitted to Client' },
+    { code: 'CLIENT_SHORTLIST', label: 'Client Shortlisted' },
     { code: 'REJECT', label: 'Reject' },
-    {
-      code: 'REJECT_HIGHER_CTC',
-      label: 'Rejected due to higher CTC asked',
-    },
+    { code: 'HOLD', label: 'Hold' },
+    { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to Higher CTC' },
   ],
   INTERVIEW_ROUND: [
     { code: 'L1', label: 'L1' },

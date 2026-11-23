@@ -1,8 +1,9 @@
 /** Client-side fallback for pipeline column derivation (mirrors API). */
 
 export const PIPELINE_COLUMNS = [
-  { key: 'SUBMITTED_TO_SPOC', label: 'Submitted' },
-  { key: 'CLIENT_SHORTLIST', label: 'Shortlist' },
+  { key: 'SUBMITTED_TO_SPOC', label: 'Internal Sales' },
+  { key: 'SUBMITTED_TO_CLIENT', label: 'To Client' },
+  { key: 'CLIENT_SHORTLIST', label: 'Shortlisted' },
   { key: 'INTERVIEW', label: 'Interview' },
   { key: 'SELECTED', label: 'Selected' },
   { key: 'OFFER', label: 'Offer' },
@@ -55,6 +56,9 @@ export function derivePipelineStage(candidate) {
   }
   if (stage === 'CLIENT_SHORTLIST') {
     return { pipelineStage: 'CLIENT_SHORTLIST', pipelineLabel: LABELS.CLIENT_SHORTLIST };
+  }
+  if (stage === 'SUBMITTED_TO_CLIENT') {
+    return { pipelineStage: 'SUBMITTED_TO_CLIENT', pipelineLabel: LABELS.SUBMITTED_TO_CLIENT };
   }
   return { pipelineStage: 'SUBMITTED_TO_SPOC', pipelineLabel: LABELS.SUBMITTED_TO_SPOC };
 }

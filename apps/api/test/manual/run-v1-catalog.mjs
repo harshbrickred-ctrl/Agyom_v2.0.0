@@ -273,7 +273,7 @@ async function main() {
     ['TC-MD-009', 'TA', 'POST', '/master-data/clients', { name: 'Forbidden Client' }],
     ['TC-MD-011', 'HR', 'POST', '/master-data/job-families', { name: 'No' }],
     ['TC-MD-014', 'TA', 'POST', '/master-data/lookups/PRIORITY', { code: 'X', label: 'X' }],
-    ['TC-J1-015', 'HR', 'POST', '/requirements/00000000-0000-4000-8000-000000000001/status', { status: 'ON_HOLD' }],
+    ['TC-J1-015', 'HR', 'POST', '/requirements/00000000-0000-4000-8000-000000000001/status', { status: 'ON_HOLD', reason: 'catalog hold' }],
     ['TC-J2-009', 'SALES', 'POST', '/candidates', { requirementId: '00000000-0000-4000-8000-000000000001', name: 'N', mobile: '1', email: 'a@b.com', stageCode: 'SUBMITTED_TO_SPOC' }],
     ['TC-AZ-020', 'SALES', 'GET', '/audit-logs'],
     ['TC-AZ-021', 'TA', 'POST', '/imports/validate', { entity: 'requirements', csv: 'a' }],
@@ -632,11 +632,11 @@ async function main() {
     const rid = (c2.data?.data ?? c2.data).id;
     await req('POST', `/requirements/${rid}/status`, {
       token: tokens.SALES,
-      body: { status: 'CANCELLED' },
+      body: { status: 'CANCELLED', reason: 'catalog cancel' },
     }).catch(async () =>
       req('POST', `/requirements/${rid}/status`, {
         token: tokens.SALES,
-        body: { statusCode: 'CANCELLED' },
+        body: { statusCode: 'CANCELLED', reason: 'catalog cancel' },
       }),
     );
     const blocked = await req('POST', '/candidates', {

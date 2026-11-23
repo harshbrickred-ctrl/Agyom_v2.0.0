@@ -5,7 +5,7 @@ import { ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
-  IconClipboardCheck, IconPlus, IconEdit, IconX, IconFilePlus,
+  IconClipboardCheck, IconPlus, IconEdit, IconX, IconFilePlus, IconTrash,
 } from '../../components/Icons';
 import RequirementPipelineBoard from '../../components/RequirementPipelineBoard';
 import DuplicateCandidatePanel from '../../components/DuplicateCandidatePanel';
@@ -15,16 +15,18 @@ import { formatTaOwnerNames } from '../../components/TaOwnersMultiSelect';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
+import { fetchAllPages } from '../../utils/fetchAllPages';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
 
 const FALLBACK_STAGES = [
-  { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to SPOC' },
-  { code: 'CLIENT_SHORTLIST', label: 'Client Shortlist' },
-  { code: 'HOLD', label: 'Hold' },
+  { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to Internal Sales Team' },
+  { code: 'SUBMITTED_TO_CLIENT', label: 'Submitted to Client' },
+  { code: 'CLIENT_SHORTLIST', label: 'Client Shortlisted' },
   { code: 'REJECT', label: 'Reject' },
-  { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to higher CTC asked' },
+  { code: 'HOLD', label: 'Hold' },
+  { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to Higher CTC' },
 ];
 
 const FALLBACK_ROUNDS = [
@@ -77,7 +79,7 @@ const FORM_SECTIONS = [
   {
     id: 'stage',
     title: 'Pipeline',
-    hint: 'Start at Submitted to SPOC unless this profile is already further along.',
+    hint: 'Start at Submitted to Internal Sales Team unless this profile is already further along.',
     keys: ['candidateStage', 'feedbackStatus', 'loiStatus', 'interviewRound'],
   },
   {
@@ -412,14 +414,13 @@ export default function AssignTaskScreen() {
   useEffect(() => {
     let active = true;
     setLoading(true);
+    // Walk all pages — default API pageSize (25 req / 20 cand) drops Closed and older rows on prod.
     Promise.all([
-      get(ENDPOINTS.REQUIREMENTS),
-      get(ENDPOINTS.CANDIDATES),
+      fetchAllPages(ENDPOINTS.REQUIREMENTS, { pageSize: 100 }),
+      fetchAllPages(ENDPOINTS.CANDIDATES, { pageSize: 100 }),
     ])
-      .then(([reqRes, candRes]) => {
+      .then(([reqList, candList]) => {
         if (!active) return;
-        const reqList = Array.isArray(reqRes) ? reqRes : reqRes?.items || reqRes?.data || [];
-        const candList = Array.isArray(candRes) ? candRes : candRes?.items || candRes?.data || [];
         // Map the requirements API response into the task-card shape used below.
         const mapped = reqList
           .filter((r) => {
@@ -668,29 +669,35 @@ export default function AssignTaskScreen() {
   const openCandidateDetails = (candidate) => setViewingCandidate(candidate);
   const closeCandidateDetails = () => setViewingCandidate(null);
 
-  const handleDeleteCandidate = async () => {
-    if (!viewingCandidate) return;
-    const candidateId = viewingCandidate.id || viewingCandidate.candidateId;
-    if (!candidateId) return;
+  const deleteCandidateById = async (candidate, { closeDetails = false } = {}) => {
+    const candidateId = candidate?.id || candidate?.candidateId;
+    if (!candidateId) return false;
     const ok = window.confirm(
       'Delete this candidate? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.',
     );
-    if (!ok) return;
+    if (!ok) return false;
     try {
       const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
       toast(res?.message || 'Candidate deleted');
       setTasks((prev) => prev.map((t) => ({
         ...t,
         candidates: (t.candidates || []).filter(
-          (c) => c.id !== candidateId && c.candidateId !== candidateId && c.publicId !== viewingCandidate.publicId,
+          (c) => c.id !== candidateId && c.candidateId !== candidateId && c.publicId !== candidate.publicId,
         ),
       })));
       setPipelineRefreshKey((k) => k + 1);
-      closeCandidateDetails();
+      if (closeDetails) closeCandidateDetails();
+      return true;
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
       toast(Array.isArray(msg) ? msg.join(', ') : msg);
+      return false;
     }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!viewingCandidate) return;
+    await deleteCandidateById(viewingCandidate, { closeDetails: true });
   };
   const closeDetail = () => {
     setShowDetail(false);
@@ -1301,6 +1308,7 @@ export default function AssignTaskScreen() {
                   onEditCandidate={openEditFromPipeline}
                   onSelectCandidate={handleSelectFromPipeline}
                   onAdvanceStage={handleAdvanceStage}
+                  onDeleteCandidate={user?.userType === 'admin' ? (c) => deleteCandidateById(c) : undefined}
                   onViewCandidate={(c) => openCandidateDetails({
                     ...c,
                     candidateId: c.publicId || c.id,
@@ -1454,8 +1462,9 @@ export default function AssignTaskScreen() {
                     </div>
                     <div className="modal-foot">
                       {user?.userType === 'admin' && (
-                        <button type="button" className="cand-edit" onClick={handleDeleteCandidate}>
-                          Delete candidate
+                        <button type="button" className="cand-edit users-delete-btn" onClick={handleDeleteCandidate} title="Delete candidate">
+                          <IconTrash />
+                          Delete
                         </button>
                       )}
                       <button type="button" className="filter-clear" onClick={closeCandidateDetails}>Close</button>

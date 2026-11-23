@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { get, patch } from '../../services/apiClient';
+import { get, patch, del } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
-import { IconCheckCircle, IconFilePlus, IconEdit, IconFilter, IconX } from '../../components/Icons';
+import { IconCheckCircle, IconFilePlus, IconEdit, IconFilter, IconX, IconTrash } from '../../components/Icons';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
@@ -9,6 +9,7 @@ import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 const HR_OFFER_STATUS_CODES = ['RELEASED', 'ACCEPTED', 'DECLINED', 'HOLD', 'BACKOUT'];
 const FALLBACK_OFFER_STATUSES = [
@@ -70,6 +71,8 @@ function offerRow(o, statusOptions) {
 
 export default function OffersScreen() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canDelete = user?.userType === 'admin';
   const [offers, setOffers] = useState([]);
   const [statusOptions, setStatusOptions] = useState(FALLBACK_OFFER_STATUSES);
   const [loading, setLoading] = useState(true);
@@ -86,6 +89,7 @@ export default function OffersScreen() {
   });
   const [saving, setSaving] = useState(false);
   const [loadingOffer, setLoadingOffer] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [listSearch, setListSearch] = useState('');
@@ -173,6 +177,27 @@ export default function OffersScreen() {
       });
     } finally {
       setLoadingOffer(false);
+    }
+  };
+
+  const deleteCandidate = async (offer) => {
+    const candidateId = offer?.candidateId || offer?.candidate?.id;
+    if (!canDelete || !candidateId) return;
+    const label = offer.candidateName || offer.candidate?.name || 'this candidate';
+    const ok = window.confirm(
+      `Delete ${label}? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.`,
+    );
+    if (!ok) return;
+    setDeletingId(candidateId);
+    try {
+      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+      toast(res?.message || 'Candidate deleted');
+      await loadOffers();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+      toast(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -386,10 +411,23 @@ export default function OffersScreen() {
                   <td>{row.offerReleasedDate}</td>
                   <td>{row.expectedDoj}</td>
                   <td>
-                    <button className="hr-detail-btn" onClick={() => openUpdate(o)} title="Update details">
-                      <IconEdit />
-                      <span>Update</span>
-                    </button>
+                    <div className="hr-row-actions">
+                      <button className="hr-detail-btn" onClick={() => openUpdate(o)} title="Update details">
+                        <IconEdit />
+                        <span>Update</span>
+                      </button>
+                      {canDelete && row.candidateId && (
+                        <button
+                          className="hr-detail-btn users-delete-btn"
+                          onClick={() => deleteCandidate(o)}
+                          disabled={deletingId === row.candidateId}
+                          title="Delete candidate"
+                        >
+                          <IconTrash />
+                          <span>{deletingId === row.candidateId ? 'Deleting…' : 'Delete'}</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

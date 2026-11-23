@@ -279,7 +279,7 @@ describe('Pipeline J1→J3 (P0)', () => {
     const reqRow = unwrap<any>(created.data);
     await api('POST', `/requirements/${reqRow.id}/status`, {
       token: sales.token,
-      body: { status: 'CANCELLED' },
+      body: { status: 'CANCELLED', reason: 'Cancelled for pipeline QA' },
     });
     const blocked = await api('POST', '/candidates', {
       token: ta.token,

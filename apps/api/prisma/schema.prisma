@@ -113,6 +113,7 @@ model Requirement {
   maxBudget         Decimal?          @map("max_budget") @db.Decimal(14, 2)
   durationMonths    Int?              @map("duration_months")
   status            RequirementStatus @default(ACTIVE)
+  statusReason      String?           @map("status_reason")
   legacyReqId       Int?              @map("legacy_req_id")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")

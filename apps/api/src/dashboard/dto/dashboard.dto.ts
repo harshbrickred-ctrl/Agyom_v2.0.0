@@ -176,6 +176,12 @@ export class DashboardEscalationItemDto {
   @ApiProperty()
   client!: string;
 
+  @ApiPropertyOptional()
+  status?: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  statusReason?: string | null;
+
   @ApiProperty({ type: String, format: 'date' })
   requirementDate!: Date;
 

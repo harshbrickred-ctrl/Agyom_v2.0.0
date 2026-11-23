@@ -699,6 +699,7 @@ const KPI_COLUMN_LABELS = {
   salesOwner: 'Sales Owner',
   profileSubmittedDate: 'Profile Submitted',
   publicId: 'Public Id',
+  statusReason: 'Reason',
 };
 
 const KPI_COLUMN_PRIORITY = [
@@ -712,6 +713,7 @@ const KPI_COLUMN_PRIORITY = [
   'client',
   'roleSkill',
   'status',
+  'statusReason',
   'statusCode',
 ];
 

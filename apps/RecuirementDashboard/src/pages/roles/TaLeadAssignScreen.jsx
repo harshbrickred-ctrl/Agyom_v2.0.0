@@ -7,6 +7,7 @@ import TaOwnersMultiSelect, { formatTaOwnerNames, formatTaLeadNames } from '../.
 import RequirementPipelineBoard from '../../components/RequirementPipelineBoard';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
+import { fetchAllPages } from '../../utils/fetchAllPages';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
@@ -35,11 +36,8 @@ export default function TaLeadAssignScreen() {
     let active = true;
     setLoading(true);
     setError(null);
-    get(ENDPOINTS.REQUIREMENTS)
-      .then((res) => {
-        const list = Array.isArray(res)
-          ? res
-          : res?.items || res?.data?.items || res?.data || [];
+    fetchAllPages(ENDPOINTS.REQUIREMENTS, { pageSize: 100 })
+      .then((list) => {
         if (active) setItems(list);
       })
       .catch((err) => {

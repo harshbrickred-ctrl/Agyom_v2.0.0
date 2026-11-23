@@ -9,6 +9,7 @@ export type PipelineStageCode =
   | 'HOLD'
   | 'INTERVIEW'
   | 'CLIENT_SHORTLIST'
+  | 'SUBMITTED_TO_CLIENT'
   | 'SUBMITTED_TO_SPOC';
 
 const PIPELINE_LABELS: Record<PipelineStageCode, string> = {
@@ -19,8 +20,9 @@ const PIPELINE_LABELS: Record<PipelineStageCode, string> = {
   REJECT: 'Reject',
   HOLD: 'Hold',
   INTERVIEW: 'Interview',
-  CLIENT_SHORTLIST: 'Client Shortlist',
-  SUBMITTED_TO_SPOC: 'Submitted to SPOC',
+  CLIENT_SHORTLIST: 'Client Shortlisted',
+  SUBMITTED_TO_CLIENT: 'Submitted to Client',
+  SUBMITTED_TO_SPOC: 'Submitted to Internal Sales Team',
 };
 
 export function pipelineLabel(stage: PipelineStageCode): string {
@@ -79,6 +81,12 @@ export function derivePipelineStage(input: {
     return {
       pipelineStage: 'CLIENT_SHORTLIST',
       pipelineLabel: PIPELINE_LABELS.CLIENT_SHORTLIST,
+    };
+  }
+  if (stage === 'SUBMITTED_TO_CLIENT') {
+    return {
+      pipelineStage: 'SUBMITTED_TO_CLIENT',
+      pipelineLabel: PIPELINE_LABELS.SUBMITTED_TO_CLIENT,
     };
   }
   return {

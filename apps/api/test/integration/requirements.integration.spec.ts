@@ -119,11 +119,18 @@ describe('Requirements integration (Phase C)', () => {
       salesOwnerId: personas.SALES.id,
       priorityCode: 'LOW',
     });
-    const hold = await api('POST', `/requirements/${row.id}/status`, {
+    const holdMissingReason = await api('POST', `/requirements/${row.id}/status`, {
       token: personas.SALES.token,
       body: { status: 'ON_HOLD' },
     });
+    expect(holdMissingReason.status).toBe(400);
+
+    const hold = await api('POST', `/requirements/${row.id}/status`, {
+      token: personas.SALES.token,
+      body: { status: 'ON_HOLD', reason: 'Client paused hiring' },
+    });
     expect([200, 201]).toContain(hold.status);
+    expect(hold.data?.statusReason).toBe('Client paused hiring');
 
     const active = await api('POST', `/requirements/${row.id}/status`, {
       token: personas.SALES.token,
@@ -133,7 +140,7 @@ describe('Requirements integration (Phase C)', () => {
 
     const cancel = await api('POST', `/requirements/${row.id}/status`, {
       token: personas.SALES.token,
-      body: { status: 'CANCELLED' },
+      body: { status: 'CANCELLED', reason: 'Budget withdrawn' },
     });
     expect([200, 201]).toContain(cancel.status);
 

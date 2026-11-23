@@ -171,6 +171,7 @@ export class RequirementsService {
       SELECTED: 60,
       INTERVIEW: 50,
       CLIENT_SHORTLIST: 40,
+      SUBMITTED_TO_CLIENT: 35,
       SUBMITTED_TO_SPOC: 30,
       HOLD: 20,
       REJECT: 10,
@@ -1333,9 +1334,24 @@ export class RequirementsService {
     );
   }
 
-  async setStatus(id: string, status: RequirementStatus, actor: AuthUser): Promise<any> {
+  async setStatus(
+    id: string,
+    status: RequirementStatus,
+    actor: AuthUser,
+    reason?: string,
+  ): Promise<any> {
     const before = await this.findRequirementOrThrow(id);
     this.assertStatusTransition(before.status, status);
+
+    const trimmedReason = reason?.trim() || '';
+    if (
+      (status === 'ON_HOLD' || status === 'CANCELLED') &&
+      !trimmedReason
+    ) {
+      throw new BadRequestException(
+        `A reason is required when setting status to ${status}`,
+      );
+    }
 
     if (status === 'CLOSED') {
       const counts = await this.closedCounts([before.id]);
@@ -1348,10 +1364,15 @@ export class RequirementsService {
       }
     }
 
+    const statusReason =
+      status === 'ON_HOLD' || status === 'CANCELLED'
+        ? trimmedReason
+        : null;
+
     const row = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.requirement.update({
         where: { id: before.id },
-        data: { status },
+        data: { status, statusReason },
         include: requirementInclude,
       });
       await this.audit.log(
@@ -1360,8 +1381,14 @@ export class RequirementsService {
           entityId: before.id,
           action: 'STATUS',
           actorUserId: actor.id,
-          before: { status: before.status },
-          after: { status: updated.status },
+          before: {
+            status: before.status,
+            statusReason: before.statusReason ?? null,
+          },
+          after: {
+            status: updated.status,
+            statusReason: updated.statusReason ?? null,
+          },
         },
         tx,
       );

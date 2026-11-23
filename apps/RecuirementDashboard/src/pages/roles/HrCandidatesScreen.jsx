@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { get, patch } from '../../services/apiClient';
+import { get, patch, del } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
 import {
-  IconUsers, IconUserCheck, IconClock, IconCheckCircle, IconXCircle, IconBriefcase, IconEdit, IconFilePlus, IconFilter, IconX,
+  IconUsers, IconUserCheck, IconClock, IconCheckCircle, IconXCircle, IconBriefcase, IconEdit, IconFilePlus, IconFilter, IconX, IconTrash,
 } from '../../components/Icons';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
@@ -11,6 +11,7 @@ import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 const STATUS_META = {
   JOINED: { icon: IconCheckCircle, cls: 'st-joined' },
@@ -59,6 +60,7 @@ function onboardingRow(o, offerStatusOptions = FALLBACK_OFFER_STATUSES) {
     id: o.id,
     publicId: o.onboardingId || o.publicId || o.id || '—',
     offerPublicId: o.offerPublicId || o.offer?.publicId || '—',
+    candidateId: o.candidateId || o.candidate?.id || '',
     candidatePublicId: o.candidatePublicId || o.candidateCode || o.candidate?.publicId || '—',
     candidateName: o.candidateName || o.candidate?.name || '—',
     clientRole: o.clientRole || o.requirement?.roleSkill || '—',
@@ -86,6 +88,8 @@ function onboardingRow(o, offerStatusOptions = FALLBACK_OFFER_STATUSES) {
 
 export default function HrCandidatesScreen() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canDelete = user?.userType === 'admin';
   const [rows, setRows] = useState([]);
   const [offerStatusOptions, setOfferStatusOptions] = useState(FALLBACK_OFFER_STATUSES);
   const [loading, setLoading] = useState(true);
@@ -106,6 +110,7 @@ export default function HrCandidatesScreen() {
 
   const [saving, setSaving] = useState(false);
   const [loadingRow, setLoadingRow] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [listSearch, setListSearch] = useState('');
@@ -169,6 +174,27 @@ export default function HrCandidatesScreen() {
   const visible = filter === 'All'
     ? rows
     : rows.filter((r) => (r.onboardingStatus || r.statusCode) === filter);
+
+  const deleteCandidate = async (item) => {
+    const candidateId = item?.candidateId || item?.candidate?.id;
+    if (!canDelete || !candidateId) return;
+    const label = item.candidateName || item.candidate?.name || 'this candidate';
+    const ok = window.confirm(
+      `Delete ${label}? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.`,
+    );
+    if (!ok) return;
+    setDeletingId(candidateId);
+    try {
+      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+      toast(res?.message || 'Candidate deleted');
+      await loadOnboardings();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+      toast(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const openUpdate = async (item) => {
     const id = item.id;
@@ -447,10 +473,23 @@ export default function HrCandidatesScreen() {
                     </span>
                   </td>
                   <td>
-                    <button className="hr-detail-btn" onClick={() => openUpdate(item)} title="Update details">
-                      <IconEdit />
-                      <span>Update</span>
-                    </button>
+                    <div className="hr-row-actions">
+                      <button className="hr-detail-btn" onClick={() => openUpdate(item)} title="Update details">
+                        <IconEdit />
+                        <span>Update</span>
+                      </button>
+                      {canDelete && row.candidateId && (
+                        <button
+                          className="hr-detail-btn users-delete-btn"
+                          onClick={() => deleteCandidate(item)}
+                          disabled={deletingId === row.candidateId}
+                          title="Delete candidate"
+                        >
+                          <IconTrash />
+                          <span>{deletingId === row.candidateId ? 'Deleting…' : 'Delete'}</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

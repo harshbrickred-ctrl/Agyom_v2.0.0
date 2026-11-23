@@ -218,6 +218,13 @@
   height: 13px;
 }
 
+.hr-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .users-delete-btn {
   color: var(--rag-red-fg) !important;
   border-color: var(--rag-red-bg) !important;

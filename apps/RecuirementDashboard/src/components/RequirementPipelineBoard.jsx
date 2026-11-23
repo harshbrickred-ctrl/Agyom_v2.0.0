@@ -7,7 +7,7 @@ import {
   derivePipelineStage,
   groupByPipelineStage,
 } from '../utils/pipelineStage';
-import { IconClipboardCheck, IconPlus } from './Icons';
+import { IconClipboardCheck, IconPlus, IconTrash } from './Icons';
 import RequirementNotes from './RequirementNotes';
 
 /**
@@ -24,6 +24,7 @@ export default function RequirementPipelineBoard({
   onSelectCandidate,
   onViewCandidate,
   onAdvanceStage,
+  onDeleteCandidate,
 }) {
   const boardRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -207,14 +208,14 @@ export default function RequirementPipelineBoard({
                         <div className="pipeline-card-name">{c.name || c.candidateName || '—'}</div>
                         <div className="pipeline-card-id">{c.publicId || '—'}</div>
                         <div className="pipeline-card-meta">{cardSubtitle(c) || pipelineLabel}</div>
-                        {editable && (
+                        {(editable || onDeleteCandidate) && (
                           <div className="pipeline-card-actions" onClick={(e) => e.stopPropagation()}>
-                            {onEditCandidate && !recruitingBlocked && (
+                            {editable && onEditCandidate && !recruitingBlocked && (
                               <button type="button" className="cand-edit" onClick={() => onEditCandidate(c)}>
                                 Edit
                               </button>
                             )}
-                            {onSelectCandidate
+                            {editable && onSelectCandidate
                               && !recruitingBlocked
                               && !c.selected
                               && !c.offer
@@ -229,7 +230,7 @@ export default function RequirementPipelineBoard({
                                 Select
                               </button>
                             )}
-                            {onAdvanceStage && !recruitingBlocked && !terminal && (
+                            {editable && onAdvanceStage && !recruitingBlocked && !terminal && (
                               <>
                                 {pipelineStage !== 'CLIENT_SHORTLIST' && pipelineStage !== 'INTERVIEW' && (
                                   <button type="button" className="cand-edit" onClick={() => onAdvanceStage(c, 'shortlist')}>
@@ -252,6 +253,16 @@ export default function RequirementPipelineBoard({
                                   </button>
                                 )}
                               </>
+                            )}
+                            {onDeleteCandidate && (
+                              <button
+                                type="button"
+                                className="cand-edit users-delete-btn"
+                                onClick={() => onDeleteCandidate(c)}
+                                title="Delete candidate"
+                              >
+                                <IconTrash />
+                              </button>
                             )}
                           </div>
                         )}

@@ -4,7 +4,7 @@ import { get, put, post, del } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { IconList, IconFilter, IconBriefcase, IconFlag, IconClipboardCheck, IconEdit, IconX } from '../../components/Icons';
+import { IconList, IconFilter, IconBriefcase, IconFlag, IconClipboardCheck, IconEdit, IconX, IconTrash } from '../../components/Icons';
 import RequirementPipelineBoard from '../../components/RequirementPipelineBoard';
 import RequirementNotes from '../../components/RequirementNotes';
 import CandidateResumeSection from '../../components/CandidateResumeSection';
@@ -12,6 +12,7 @@ import TaOwnersMultiSelect, { formatTaOwnerNames, formatTaLeadNames } from '../.
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
+import { fetchAllPages } from '../../utils/fetchAllPages';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
@@ -64,6 +65,8 @@ export default function YourRequirementsScreen() {
   const [statusBusyId, setStatusBusyId] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
   const [statusError, setStatusError] = useState(null);
+  const [statusModal, setStatusModal] = useState(null); // { requirement, nextStatus }
+  const [statusReason, setStatusReason] = useState('');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [deletingId, setDeletingId] = useState(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -80,11 +83,8 @@ export default function YourRequirementsScreen() {
     let active = true;
     setLoading(true);
     setError(null);
-    get(`${ENDPOINTS.REQUIREMENTS}?sort=createdAt:desc&pageSize=100`)
-      .then((res) => {
-        const list = Array.isArray(res)
-          ? res
-          : res?.items || res?.data?.items || res?.data || [];
+    fetchAllPages(`${ENDPOINTS.REQUIREMENTS}?sort=createdAt:desc`, { pageSize: 100 })
+      .then((list) => {
         // Sales users only see their own requirements; sales lead / admins see everything.
         const filtered = user?.userType === 'sales'
           ? list.filter(isOwnedByCurrentSalesUser)
@@ -234,27 +234,50 @@ export default function YourRequirementsScreen() {
   };
   const hasFilters = Boolean(filters.clientId || filters.priorityCode || filters.status || listSearch.trim());
 
-  const changeRequirementStatus = async (requirement, nextStatus) => {
+  const openStatusReasonModal = (requirement, nextStatus) => {
     if (!requirement?.id || !canManageStatus) return;
-    if (nextStatus === 'CANCELLED') {
-      const label = requirement.publicId || requirement.roleSkill || 'this requirement';
-      const ok = window.confirm(
-        `Cancel ${label}?\n\nRecruiting will stop and this will appear under Cancelled on the dashboard.`,
-      );
-      if (!ok) return;
+    setStatusReason('');
+    setStatusError(null);
+    setStatusModal({ requirement, nextStatus });
+  };
+
+  const closeStatusReasonModal = () => {
+    if (statusBusyId) return;
+    setStatusModal(null);
+    setStatusReason('');
+  };
+
+  const changeRequirementStatus = async (requirement, nextStatus, reason = '') => {
+    if (!requirement?.id || !canManageStatus) return;
+
+    if (nextStatus === 'ON_HOLD' || nextStatus === 'CANCELLED') {
+      if (!statusModal || statusModal.requirement?.id !== requirement.id) {
+        openStatusReasonModal(requirement, nextStatus);
+        return;
+      }
+      if (!String(reason || '').trim()) {
+        setStatusError('Please enter a reason before continuing.');
+        return;
+      }
     }
 
     setStatusBusyId(requirement.id);
     setStatusMessage(null);
     setStatusError(null);
     try {
-      const updated = await post(`${ENDPOINTS.REQUIREMENTS}/${requirement.id}/status`, {
-        status: nextStatus,
-      });
+      const payload = { status: nextStatus };
+      if (nextStatus === 'ON_HOLD' || nextStatus === 'CANCELLED') {
+        payload.reason = String(reason).trim();
+      }
+      const updated = await post(`${ENDPOINTS.REQUIREMENTS}/${requirement.id}/status`, payload);
       const next = updated?.status || nextStatus;
       setItems((prev) => prev.map((r) => (
-        r.id === requirement.id ? { ...r, ...updated, status: next } : r
+        r.id === requirement.id
+          ? { ...r, ...updated, status: next, statusReason: updated?.statusReason ?? (payload.reason || null) }
+          : r
       )));
+      setStatusModal(null);
+      setStatusReason('');
       setStatusMessage(
         next === 'ON_HOLD'
           ? `Requirement ${requirement.publicId || ''} put on hold`
@@ -407,8 +430,9 @@ export default function YourRequirementsScreen() {
   const openRequirementDetails = (requirement) => { setViewingRequirement(requirement); };
   const closeRequirementDetails = () => { setViewingRequirement(null); setViewingCandidate(null); };
   useEscapeKey(Boolean(editing), closeEdit);
-  useEscapeKey(Boolean(viewingRequirement && !editing), closeRequirementDetails);
-  useEscapeKey(Boolean(viewingCandidate && !viewingRequirement && !editing), () => setViewingCandidate(null));
+  useEscapeKey(Boolean(viewingRequirement && !editing && !statusModal), closeRequirementDetails);
+  useEscapeKey(Boolean(viewingCandidate && !viewingRequirement && !editing && !statusModal), () => setViewingCandidate(null));
+  useEscapeKey(Boolean(statusModal), closeStatusReasonModal);
 
   const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -750,7 +774,7 @@ export default function YourRequirementsScreen() {
                         <button
                           className="cand-edit yr-status-btn"
                           disabled={statusBusyId === r.id}
-                          onClick={() => changeRequirementStatus(r, 'ON_HOLD')}
+                          onClick={() => openStatusReasonModal(r, 'ON_HOLD')}
                           title="Put on hold"
                         >
                           Hold
@@ -770,7 +794,7 @@ export default function YourRequirementsScreen() {
                         <button
                           className="cand-edit yr-status-btn yr-status-btn--danger"
                           disabled={statusBusyId === r.id}
-                          onClick={() => changeRequirementStatus(r, 'CANCELLED')}
+                          onClick={() => openStatusReasonModal(r, 'CANCELLED')}
                           title="Cancel requirement"
                         >
                           Cancel
@@ -824,6 +848,25 @@ export default function YourRequirementsScreen() {
                 mode="readonly"
                 refreshKey={pipelineRefreshKey}
                 onViewCandidate={(c) => setViewingCandidate(c)}
+                onDeleteCandidate={canDelete ? async (c) => {
+                  const candidateId = c.id || c.publicId;
+                  if (!candidateId) return;
+                  const ok = window.confirm(
+                    'Delete this candidate? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.',
+                  );
+                  if (!ok) return;
+                  try {
+                    const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+                    toast(res?.message || 'Candidate deleted');
+                    if (viewingCandidate && (viewingCandidate.id === candidateId || viewingCandidate.publicId === candidateId)) {
+                      setViewingCandidate(null);
+                    }
+                    setPipelineRefreshKey((k) => k + 1);
+                  } catch (err) {
+                    const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+                    toast(Array.isArray(msg) ? msg.join(', ') : msg);
+                  }
+                } : undefined}
               />
             </div>
             <div className="modal-foot">
@@ -863,7 +906,8 @@ export default function YourRequirementsScreen() {
               {canDelete && (
                 <button
                   type="button"
-                  className="cand-edit"
+                  className="cand-edit users-delete-btn"
+                  title="Delete candidate"
                   onClick={async () => {
                     const candidateId = viewingCandidate.id || viewingCandidate.publicId;
                     if (!candidateId) return;
@@ -882,10 +926,66 @@ export default function YourRequirementsScreen() {
                     }
                   }}
                 >
-                  Delete candidate
+                  <IconTrash />
+                  Delete
                 </button>
               )}
               <button className="filter-clear" type="button" onClick={() => setViewingCandidate(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusModal && (
+        <div className="modal-overlay" onClick={closeStatusReasonModal}>
+          <div className="modal-card detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>
+                {statusModal.nextStatus === 'ON_HOLD' ? 'Put requirement on hold' : 'Cancel requirement'}
+                {(statusModal.requirement?.publicId || statusModal.requirement?.roleSkill) && (
+                  <span className="kpi-modal-count">
+                    {statusModal.requirement.publicId || statusModal.requirement.roleSkill}
+                  </span>
+                )}
+              </h3>
+              <button className="modal-close" onClick={closeStatusReasonModal} title="Close" disabled={Boolean(statusBusyId)}>×</button>
+            </div>
+            <div className="modal-body">
+              {statusError && <div className="add-error">{statusError}</div>}
+              <p className="pipeline-modal-sub">
+                {statusModal.nextStatus === 'ON_HOLD'
+                  ? 'Recruiting pauses until the requirement is resumed. This reason appears on dashboard Hold KPIs.'
+                  : 'Recruiting stops and this appears under Cancelled on the dashboard with the reason below.'}
+              </p>
+              <label className="detail-field">
+                <span className="detail-label">Reason</span>
+                <textarea
+                  rows={4}
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder={statusModal.nextStatus === 'ON_HOLD'
+                    ? 'Why is this requirement on hold?'
+                    : 'Why is this requirement cancelled?'}
+                  disabled={Boolean(statusBusyId)}
+                />
+              </label>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="filter-clear" onClick={closeStatusReasonModal} disabled={Boolean(statusBusyId)}>
+                Back
+              </button>
+              <button
+                type="button"
+                className={statusModal.nextStatus === 'CANCELLED' ? 'cand-edit yr-status-btn--danger' : 'cand-edit'}
+                disabled={Boolean(statusBusyId) || !statusReason.trim()}
+                onClick={() => changeRequirementStatus(statusModal.requirement, statusModal.nextStatus, statusReason)}
+              >
+                {statusBusyId === statusModal.requirement?.id
+                  ? 'Saving…'
+                  : statusModal.nextStatus === 'ON_HOLD'
+                    ? 'Confirm Hold'
+                    : 'Confirm Cancel'}
+              </button>
             </div>
           </div>
         </div>

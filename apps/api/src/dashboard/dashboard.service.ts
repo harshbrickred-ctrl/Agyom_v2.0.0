@@ -7,6 +7,7 @@ import {
 import { Prisma, Role } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DashboardQueryDto } from '../common/swagger/query.dto';
+import { DashboardEscalationsDto } from './dto/dashboard.dto';
 
 const percentage = (count: number, total: number) =>
   total > 0 ? Math.round((count / total) * 10_000) / 10_000 : 0;
@@ -558,6 +559,7 @@ export class DashboardService {
       publicId: true,
       roleSkill: true,
       status: true,
+      statusReason: true,
       priorityCode: true,
       numberOfPositions: true,
       requirementDate: true,
@@ -1193,7 +1195,7 @@ export class DashboardService {
     };
   }
 
-  async escalations(query: DashboardQueryDto) {
+  async escalations(query: DashboardQueryDto): Promise<DashboardEscalationsDto> {
     const requirements = await this.prisma.requirement.findMany({
       where: this.requirementWhere(query),
       include: {
@@ -1254,6 +1256,8 @@ export class DashboardService {
       publicId: r.publicId,
       roleSkill: r.roleSkill,
       client: r.client.name,
+      status: r.status,
+      statusReason: r.statusReason ?? null,
       requirementDate: r.requirementDate,
       targetClosureDate: r.targetClosureDate,
       openPositions: Math.max(

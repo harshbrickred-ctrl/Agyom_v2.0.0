@@ -54,7 +54,7 @@ describe('Candidates integration (Phase C)', () => {
     });
     await api('POST', `/requirements/${holdReq.id}/status`, {
       token: personas.SALES.token,
-      body: { status: 'ON_HOLD' },
+      body: { status: 'ON_HOLD', reason: 'Hold for QA coverage' },
     });
     const onHold = await addCandidate(personas.TA.token, holdReq.id);
     expect(onHold.status).toBe(400);
@@ -69,7 +69,7 @@ describe('Candidates integration (Phase C)', () => {
     });
     await api('POST', `/requirements/${cancelReq.id}/status`, {
       token: personas.SALES.token,
-      body: { status: 'CANCELLED' },
+      body: { status: 'CANCELLED', reason: 'Cancelled for QA coverage' },
     });
     const cancelled = await addCandidate(personas.TA.token, cancelReq.id);
     expect(cancelled.status).toBe(400);

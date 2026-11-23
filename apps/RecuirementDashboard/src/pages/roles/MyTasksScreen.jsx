@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { get } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import { IconBriefcase, IconClipboardCheck } from '../../components/Icons';
@@ -7,6 +6,7 @@ import RequirementPipelineBoard from '../../components/RequirementPipelineBoard'
 import CandidateResumeSection from '../../components/CandidateResumeSection';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import { fetchAllPages } from '../../utils/fetchAllPages';
 
 export default function MyTasksScreen() {
   const { user } = useAuth();
@@ -23,10 +23,9 @@ export default function MyTasksScreen() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    get(ENDPOINTS.REQUIREMENTS)
-      .then((reqRes) => {
+    fetchAllPages(ENDPOINTS.REQUIREMENTS, { pageSize: 100 })
+      .then((reqList) => {
         if (!active) return;
-        const reqList = Array.isArray(reqRes) ? reqRes : reqRes?.items || reqRes?.data || [];
         const email = user?.email?.toLowerCase?.();
         const salesOnly = (r) => r.salesOwner?.email?.toLowerCase?.() === email;
         const owned = reqList.filter(salesOnly).map((r) => {

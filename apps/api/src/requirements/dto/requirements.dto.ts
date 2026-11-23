@@ -249,6 +249,15 @@ export class RequirementStatusDto {
   @ApiProperty({ enum: RequirementStatus })
   @IsEnum(RequirementStatus)
   status!: RequirementStatus;
+
+  @ApiPropertyOptional({
+    example: 'Client paused hiring for Q4',
+    description: 'Required when status is ON_HOLD or CANCELLED',
+  })
+  @ValidateIf((o) => o.status === 'ON_HOLD' || o.status === 'CANCELLED')
+  @IsString()
+  @MinLength(1)
+  reason?: string;
 }
 
 /** Fields a TA user may update on an assigned requirement. */

@@ -1078,6 +1078,25 @@ Color: var(--dash-text-body);
   margin-left: auto;
 }
 
+/* Keep filter InfoTip below the heading so .main overflow does not clip it */
+.dashboard .filter-bar:has(.kpi-info) {
+  overflow: visible;
+  position: relative;
+  z-index: 20;
+}
+
+.dashboard .filter-bar:has(.kpi-info:hover),
+.dashboard .filter-bar:has(.kpi-info:focus-within) {
+  z-index: 21;
+}
+
+.dashboard .filter-heading .kpi-info--inline .kpi-info-tip {
+  top: calc(100% + 8px);
+  bottom: auto;
+  left: 0;
+  z-index: 30;
+}
+
 .dashboard .filter-chips {
   display: flex;
   flex-wrap: wrap;

@@ -782,6 +782,7 @@ export default function YourRequirementsScreen() {
         </div>
       ) : (
         <section className="reqx-table-card">
+          <div className="reqx-table-viewport">
           <div className="reqx-table-scroll">
             <table className="reqx-table">
               <thead>
@@ -871,6 +872,7 @@ export default function YourRequirementsScreen() {
                     <td>{formatTaOwnerNames(r)}</td>
                     <td>
                       <span className={`reqx-status reqx-status--${String(r.status || 'ACTIVE').toLowerCase()}`}>
+                        <span className="reqx-status-dot" />
                         {(r.status || 'ACTIVE').replace(/_/g, ' ')}
                       </span>
                     </td>
@@ -890,12 +892,12 @@ export default function YourRequirementsScreen() {
 
                         <button
                           type="button"
-                          className="reqx-icon-button"
+                          className="reqx-update-button"
                           onClick={() => openEdit(r)}
                           title="Edit requirement"
-                          aria-label="Edit requirement"
                         >
                           <IconEdit />
+                          <span>Edit</span>
                         </button>
 
                         {canManageStatus && (r.status || 'ACTIVE') === 'ACTIVE' && (
@@ -948,6 +950,7 @@ export default function YourRequirementsScreen() {
               </tbody>
             </table>
           </div>
+          </div>
 
           <div className="reqx-table-footer">
             <span>
@@ -958,36 +961,39 @@ export default function YourRequirementsScreen() {
         </section>
       )}
 
-      {/* Requirement pipeline modal */}
+      {/* Requirement pipeline modal — same chrome as Assign Task */}
       {viewingRequirement && (
-        <div className="reqx-overlay" onClick={closeRequirementDetails}>
-          <div className="reqx-modal reqx-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="reqx-modal-header">
-              <div className="reqx-modal-heading">
-                <span className="reqx-modal-eyebrow">Requirement pipeline</span>
+        <div className="modal-overlay" onClick={closeRequirementDetails}>
+          <div className="modal-card detail-modal pipeline-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="pipeline-modal-heading">
                 <h3>
-                  {viewingRequirement.publicId || viewingRequirement.id}
-                  <span className={`reqx-status reqx-status--${String(viewingRequirement.status || 'ACTIVE').toLowerCase()}`}>
-                    {(viewingRequirement.status || 'ACTIVE').replace(/_/g, ' ')}
-                  </span>
-                </h3>
-                <p>
                   {[viewingRequirement.client?.name, viewingRequirement.roleSkill]
                     .filter(Boolean)
-                    .join(' · ') || 'Candidate pipeline'}
+                    .join(' — ') || 'Candidate pipeline'}
+                  <span className="kpi-modal-count">{viewingRequirement.publicId || viewingRequirement.id}</span>
+                  <span className={`yr-status ${(viewingRequirement.status || 'ACTIVE').toLowerCase()}`}>
+                    {viewingRequirement.status || 'ACTIVE'}
+                  </span>
+                </h3>
+                <p className="pipeline-modal-sub">
+                  Filled {viewingRequirement.closedPositions ?? 0}/{viewingRequirement.numberOfPositions ?? '—'}
+                  {' · '}
+                  Open {
+                    Number(viewingRequirement.numberOfPositions) > 0
+                      ? Math.max(
+                        Number(viewingRequirement.numberOfPositions) - Number(viewingRequirement.closedPositions || 0),
+                        0,
+                      )
+                      : (viewingRequirement.openPositions ?? '—')
+                  }
                 </p>
               </div>
-              <button
-                type="button"
-                className="reqx-modal-close"
-                onClick={closeRequirementDetails}
-                aria-label="Close"
-              >
+              <button type="button" className="modal-close" onClick={closeRequirementDetails} title="Close">
                 <IconX />
               </button>
             </div>
-
-            <div className="reqx-modal-body">
+            <div className="modal-body">
               <RequirementPipelineBoard
                 requirementId={viewingRequirement.id}
                 requirement={viewingRequirement}
@@ -1014,12 +1020,6 @@ export default function YourRequirementsScreen() {
                   }
                 } : undefined}
               />
-            </div>
-
-            <div className="reqx-modal-footer">
-              <button type="button" className="reqx-button reqx-button--secondary" onClick={closeRequirementDetails}>
-                Close
-              </button>
             </div>
           </div>
         </div>
@@ -1203,8 +1203,8 @@ export default function YourRequirementsScreen() {
               </button>
             </div>
 
-            <form onSubmit={handleSave}>
-              <div className="reqx-modal-body">
+            <div className="reqx-modal-body">
+              <form id="edit-requirement-form" onSubmit={handleSave}>
                 <div className="reqx-form-grid">
                   <label className="reqx-form-field">
                     <span>Requirement Date</span>
@@ -1434,19 +1434,28 @@ export default function YourRequirementsScreen() {
 
                 {editError && <div className="reqx-alert reqx-alert--error">{editError}</div>}
                 {editSuccess && <div className="reqx-alert reqx-alert--success">{editSuccess}</div>}
+              </form>
 
-                {editing?.id && <RequirementNotes requirementId={editing.id} />}
-              </div>
+              {editing?.id && (
+                <div className="reqx-notes-block">
+                  <RequirementNotes requirementId={editing.id} />
+                </div>
+              )}
+            </div>
 
-              <div className="reqx-modal-footer">
-                <button type="button" className="reqx-button reqx-button--secondary" onClick={closeEdit}>
-                  Cancel
-                </button>
-                <button type="submit" className="reqx-button reqx-button--primary" disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+            <div className="reqx-modal-footer">
+              <button type="button" className="reqx-button reqx-button--secondary" onClick={closeEdit}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="edit-requirement-form"
+                className="reqx-button reqx-button--primary"
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       )}

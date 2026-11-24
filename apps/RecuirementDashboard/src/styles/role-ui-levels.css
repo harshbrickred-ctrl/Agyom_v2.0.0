@@ -2470,11 +2470,13 @@
    card grid + modal; commenting this block should not be required for
    correctness, but PHASE 12 rules that fight the new layout are overridden here.
    ===== */
-.assign-task .assign-head .yr-count {
+.assign-task .assign-head .yr-count,
+.my-tasks-screen .assign-head .yr-count {
   margin-left: auto;
 }
 
-.assign-task .assign-body {
+.assign-task .assign-body,
+.my-tasks-screen .assign-body {
   display: block;
   grid-template-columns: none;
   gap: 0;
@@ -2583,13 +2585,17 @@
   color: var(--dash-text-strong, var(--text));
 }
 
-.assign-task .modal-card.pipeline-modal {
+.assign-task .modal-card.pipeline-modal,
+.reqx-screen .modal-card.pipeline-modal,
+.my-tasks-screen .modal-card.pipeline-modal {
   width: min(1200px, 96vw);
   max-width: 96vw;
   max-height: 92vh;
 }
 
-.assign-task .pipeline-modal .modal-head {
+.assign-task .pipeline-modal .modal-head,
+.reqx-screen .pipeline-modal .modal-head,
+.my-tasks-screen .pipeline-modal .modal-head {
   flex-wrap: wrap;
   gap: 10px 12px;
 }
@@ -2606,7 +2612,9 @@
   flex: 0 0 auto;
 }
 
-.assign-task .pipeline-modal .modal-body {
+.assign-task .pipeline-modal .modal-body,
+.reqx-screen .pipeline-modal .modal-body,
+.my-tasks-screen .pipeline-modal .modal-body {
   overflow-y: auto;
   min-height: 0;
 }

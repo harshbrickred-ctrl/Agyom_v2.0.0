@@ -672,6 +672,30 @@
   background: var(--ofx-accent-soft);
 }
 
+.ofx-action-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ofx-update-button--danger {
+  color: var(--ofx-danger);
+  border-color: color-mix(in srgb, var(--ofx-danger) 28%, transparent);
+  background: var(--ofx-danger-bg);
+}
+
+.ofx-update-button--danger:hover {
+  color: var(--ofx-danger);
+  border-color: var(--ofx-danger);
+  background: var(--ofx-danger-bg);
+}
+
+.ofx-update-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* =========================================
    EMPTY STATE
 ========================================= */

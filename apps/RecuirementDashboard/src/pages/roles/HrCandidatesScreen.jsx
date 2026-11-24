@@ -582,6 +582,7 @@ import {
   IconFilePlus,
   IconFilter,
   IconX,
+  IconTrash,
 } from '../../components/Icons';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
@@ -591,6 +592,7 @@ import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import './../pageCss/HrCandidatesScreen.css';
 
 const STATUS_META = {
@@ -657,6 +659,7 @@ function onboardingRow(o, offerStatusOptions = FALLBACK_OFFER_STATUSES) {
     id: o.id,
     publicId: o.onboardingId || o.publicId || o.id || '—',
     offerPublicId: o.offerPublicId || o.offer?.publicId || '—',
+    candidateId: o.candidateId || o.candidate?.id || '',
     candidatePublicId:
       o.candidatePublicId ||
       o.candidateCode ||
@@ -692,6 +695,8 @@ function onboardingRow(o, offerStatusOptions = FALLBACK_OFFER_STATUSES) {
 export default function HrCandidatesScreen() {
   const { toast } = useToast();
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const canDelete = user?.userType === 'admin';
 
   const isDark = theme === 'dark';
 
@@ -809,6 +814,27 @@ export default function HrCandidatesScreen() {
       : rows.filter(
           (r) => (r.onboardingStatus || r.statusCode) === filter
         );
+
+  const deleteCandidate = async (item) => {
+    const candidateId = item?.candidateId || item?.candidate?.id;
+    if (!canDelete || !candidateId) return;
+    const label = item.candidateName || item.candidate?.name || 'this candidate';
+    const ok = window.confirm(
+      `Delete ${label}? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.`,
+    );
+    if (!ok) return;
+    setDeletingId(candidateId);
+    try {
+      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+      toast(res?.message || 'Candidate deleted');
+      await loadOnboardings();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+      toast(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const openUpdate = async (item) => {
     const id = item.id;
@@ -1198,15 +1224,29 @@ export default function HrCandidatesScreen() {
                       </td>
 
                       <td>
-                        <button
-                          type="button"
-                          className="obx-update-button"
-                          onClick={() => openUpdate(item)}
-                          title="Update onboarding details"
-                        >
-                          <IconEdit />
-                          <span>Update</span>
-                        </button>
+                        <div className="obx-action-row">
+                          <button
+                            type="button"
+                            className="obx-update-button"
+                            onClick={() => openUpdate(item)}
+                            title="Update onboarding details"
+                          >
+                            <IconEdit />
+                            <span>Update</span>
+                          </button>
+                          {canDelete && row.candidateId && (
+                            <button
+                              type="button"
+                              className="obx-update-button obx-update-button--danger"
+                              onClick={() => deleteCandidate(item)}
+                              disabled={deletingId === row.candidateId}
+                              title="Delete candidate"
+                            >
+                              <IconTrash />
+                              <span>{deletingId === row.candidateId ? 'Deleting…' : 'Delete'}</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

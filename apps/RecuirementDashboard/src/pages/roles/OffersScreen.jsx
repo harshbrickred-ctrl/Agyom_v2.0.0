@@ -8,6 +8,7 @@ import {
   IconEdit,
   IconFilter,
   IconX,
+  IconTrash,
 } from '../../components/Icons';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
@@ -16,6 +17,7 @@ import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import './../pageCss/OffersScreen.css';
 
 const HR_OFFER_STATUS_CODES = [
@@ -102,6 +104,8 @@ function getOfferStatusClass(status) {
 
 export default function OffersScreen() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canDelete = user?.userType === 'admin';
 
   const [offers, setOffers] = useState([]);
   const [statusOptions, setStatusOptions] = useState(FALLBACK_OFFER_STATUSES);
@@ -619,15 +623,29 @@ export default function OffersScreen() {
                         <td>{row.offerReleasedDate}</td>
                         <td>{row.expectedDoj}</td>
                         <td className="ofx-action-cell">
-                          <button
-                            type="button"
-                            className="ofx-update-button"
-                            onClick={() => openUpdate(o)}
-                            title="Update offer details"
-                          >
-                            <IconEdit />
-                            <span>Update</span>
-                          </button>
+                          <div className="ofx-action-row">
+                            <button
+                              type="button"
+                              className="ofx-update-button"
+                              onClick={() => openUpdate(o)}
+                              title="Update offer details"
+                            >
+                              <IconEdit />
+                              <span>Update</span>
+                            </button>
+                            {canDelete && row.candidateId && (
+                              <button
+                                type="button"
+                                className="ofx-update-button ofx-update-button--danger"
+                                onClick={() => deleteCandidate(o)}
+                                disabled={deletingId === row.candidateId}
+                                title="Delete candidate"
+                              >
+                                <IconTrash />
+                                <span>{deletingId === row.candidateId ? 'Deleting…' : 'Delete'}</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

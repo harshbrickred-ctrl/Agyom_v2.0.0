@@ -15,6 +15,8 @@
   --obx-border-strong: #d9dee6;
   --obx-accent: #e05252;
   --obx-accent-soft: #f9eeee;
+  --obx-danger: #c13c45;
+  --obx-danger-bg: #fff0f0;
   --obx-shadow: 0 2px 8px rgba(25, 35, 50, 0.035);
     --obx-accent-hover:#e05252;
 
@@ -41,6 +43,8 @@
   --obx-accent: #df747a;
   --obx-accent-hover: #ec858b;
   --obx-accent-soft: rgba(223, 116, 122, 0.12);
+  --obx-danger: #ff858b;
+  --obx-danger-bg: rgba(193, 60, 69, 0.15);
   --obx-shadow: 0 2px 10px rgba(0, 0, 0, 0.13);
 }
 
@@ -585,6 +589,30 @@
   color: var(--obx-accent);
   border-color: var(--obx-accent);
   background: var(--obx-accent-soft);
+}
+
+.obx-action-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.obx-update-button--danger {
+  color: var(--obx-danger, #c13c45);
+  border-color: color-mix(in srgb, var(--obx-danger, #c13c45) 28%, transparent);
+  background: var(--obx-danger-bg, #fff0f0);
+}
+
+.obx-update-button--danger:hover {
+  color: var(--obx-danger, #c13c45);
+  border-color: var(--obx-danger, #c13c45);
+  background: var(--obx-danger-bg, #fff0f0);
+}
+
+.obx-update-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* ==========================================

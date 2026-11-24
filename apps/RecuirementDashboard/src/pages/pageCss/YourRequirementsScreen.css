@@ -457,6 +457,11 @@
 }
 
 /* Buttons */
+.reqx-required {
+  color: var(--reqx-danger);
+  font-weight: 750;
+}
+
 .reqx-button {
   display: inline-flex;
   align-items: center;
@@ -941,6 +946,23 @@
   padding: 12px 20px;
   border-top: 1px solid var(--reqx-border);
   background: var(--reqx-card);
+}
+
+.reqx-modal-copy {
+  margin: 0 0 12px;
+  color: var(--reqx-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.reqx-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.reqx-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* Candidate detail fields */

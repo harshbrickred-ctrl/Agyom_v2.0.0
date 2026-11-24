@@ -1077,8 +1077,106 @@ export default function YourRequirementsScreen() {
             </div>
 
             <div className="reqx-modal-footer">
+              {canDelete && (
+                <button
+                  type="button"
+                  className="reqx-button reqx-button--danger"
+                  title="Delete candidate"
+                  onClick={async () => {
+                    const candidateId = viewingCandidate.id || viewingCandidate.publicId;
+                    if (!candidateId) return;
+                    const ok = window.confirm(
+                      'Delete this candidate? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.',
+                    );
+                    if (!ok) return;
+                    try {
+                      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
+                      toast(res?.message || 'Candidate deleted');
+                      setViewingCandidate(null);
+                      setPipelineRefreshKey((k) => k + 1);
+                    } catch (err) {
+                      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
+                      toast(Array.isArray(msg) ? msg.join(', ') : msg);
+                    }
+                  }}
+                >
+                  <IconTrash />
+                  Delete
+                </button>
+              )}
               <button type="button" className="reqx-button reqx-button--secondary" onClick={() => setViewingCandidate(null)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusModal && (
+        <div className="reqx-overlay" onClick={closeStatusReasonModal}>
+          <div className="reqx-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="reqx-modal-header">
+              <div className="reqx-modal-heading">
+                <span className="reqx-modal-eyebrow">Requirement status</span>
+                <h3>
+                  {statusModal.nextStatus === 'ON_HOLD' ? 'Put requirement on hold' : 'Cancel requirement'}
+                </h3>
+                <p>
+                  {statusModal.requirement?.publicId || statusModal.requirement?.roleSkill || 'Requirement'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="reqx-modal-close"
+                onClick={closeStatusReasonModal}
+                disabled={Boolean(statusBusyId)}
+                aria-label="Close"
+              >
+                <IconX />
+              </button>
+            </div>
+
+            <div className="reqx-modal-body">
+              {statusError && <div className="reqx-alert reqx-alert--error">{statusError}</div>}
+              <p className="reqx-modal-copy">
+                {statusModal.nextStatus === 'ON_HOLD'
+                  ? 'Recruiting pauses until the requirement is resumed. This reason appears on dashboard Hold KPIs.'
+                  : 'Recruiting stops and this appears under Cancelled on the dashboard with the reason below.'}
+              </p>
+              <label className="reqx-form-field reqx-form-field--full">
+                <span>Reason</span>
+                <textarea
+                  rows={4}
+                  value={statusReason}
+                  onChange={(e) => setStatusReason(e.target.value)}
+                  placeholder={statusModal.nextStatus === 'ON_HOLD'
+                    ? 'Why is this requirement on hold?'
+                    : 'Why is this requirement cancelled?'}
+                  disabled={Boolean(statusBusyId)}
+                />
+              </label>
+            </div>
+
+            <div className="reqx-modal-footer">
+              <button
+                type="button"
+                className="reqx-button reqx-button--secondary"
+                onClick={closeStatusReasonModal}
+                disabled={Boolean(statusBusyId)}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className={statusModal.nextStatus === 'CANCELLED' ? 'reqx-button reqx-button--danger' : 'reqx-button reqx-button--primary'}
+                disabled={Boolean(statusBusyId) || !statusReason.trim()}
+                onClick={() => changeRequirementStatus(statusModal.requirement, statusModal.nextStatus, statusReason)}
+              >
+                {statusBusyId === statusModal.requirement?.id
+                  ? 'Saving…'
+                  : statusModal.nextStatus === 'ON_HOLD'
+                    ? 'Confirm Hold'
+                    : 'Confirm Cancel'}
               </button>
             </div>
           </div>
@@ -1265,18 +1363,20 @@ export default function YourRequirementsScreen() {
                   </div>
 
                   <label className="reqx-form-field">
-                    <span>TA Handoff Date</span>
+                    <span>TA Handoff Date <span className="reqx-required" aria-hidden="true">*</span></span>
                     <input
                       type="date"
+                      required
                       value={form.taHandoffDate}
                       onChange={(e) => setField('taHandoffDate', e.target.value)}
                     />
                   </label>
 
                   <label className="reqx-form-field">
-                    <span>Target Closure Date</span>
+                    <span>Target Closure Date <span className="reqx-required" aria-hidden="true">*</span></span>
                     <input
                       type="date"
+                      required
                       value={form.targetClosureDate}
                       onChange={(e) => setField('targetClosureDate', e.target.value)}
                     />

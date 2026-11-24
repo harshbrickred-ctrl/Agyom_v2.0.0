@@ -113,14 +113,14 @@ const FIELDS = [
     label: 'TA Handoff Date',
     type: 'date',
     icon: IconCalendar,
-    required: false,
+    required: true,
   },
   {
     key: 'targetClosureDate',
     label: 'Target Closure Date',
     type: 'date',
     icon: IconCalendar,
-    required: false,
+    required: true,
   },
   {
     key: 'experience',
@@ -186,7 +186,7 @@ const FIELD_SECTIONS = [
     id: 'commercial',
     number: '03',
     legend: 'Timeline & budget',
-    description: 'Set the expected delivery timeline and compensation range.',
+    description: 'TA Handoff and Target Closure dates are required. Budget fields are optional.',
     keys: [
       'taHandoffDate',
       'targetClosureDate',
@@ -441,6 +441,8 @@ export default function AddRequestScreen() {
       { key: 'salesOwnerId', label: 'Sales Owner', required: true },
       { key: 'priorityCode', label: 'Priority', required: true },
       { key: 'jobLocation', label: 'Job Location', required: true },
+      { key: 'taHandoffDate', label: 'TA Handoff Date', required: true },
+      { key: 'targetClosureDate', label: 'Target Closure Date', required: true },
     ].filter(
       (field) =>
         field.required &&
@@ -516,8 +518,8 @@ export default function AddRequestScreen() {
         numberOfPositions: toInt(form.numberOfPositions),
         salesOwnerId: form.salesOwnerId,
         priorityCode: form.priorityCode,
-        taHandoffDate: form.taHandoffDate || undefined,
-        targetClosureDate: form.targetClosureDate || undefined,
+        taHandoffDate: form.taHandoffDate,
+        targetClosureDate: form.targetClosureDate,
         remarks: form.remarks || undefined,
         experience: form.experience || undefined,
         jobLocation: form.jobLocation,

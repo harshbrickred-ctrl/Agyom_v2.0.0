@@ -1,0 +1,960 @@
+
+/* ==========================================
+   ONBOARDING — OBX
+   Scoped styles + independent theme
+========================================== */
+
+.obx-screen {
+  --obx-bg: #f5f6f8;
+  --obx-card: #ffffff;
+  --obx-card-soft: #f8f9fb;
+  --obx-text: #252b36;
+  --obx-muted: #737d8b;
+  --obx-subtle: #9aa3af;
+  --obx-border: #e6e9ee;
+  --obx-border-strong: #d9dee6;
+  --obx-accent: #e05252;
+  --obx-accent-soft: #f9eeee;
+  --obx-shadow: 0 2px 8px rgba(25, 35, 50, 0.035);
+    --obx-accent-hover:#e05252;
+
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  color: var(--obx-text);
+  font-family: inherit;
+}
+
+/* DARK THEME */
+
+.obx-screen.obx-dark {
+  --obx-bg: #171b22;
+  --obx-card: #202630;
+  --obx-card-soft: #262e39;
+  --obx-text: #edf0f4;
+  --obx-muted: #a3adba;
+  --obx-subtle: #7f8a99;
+  --obx-border: #303a47;
+  --obx-border-strong: #424e5d;
+  --obx-accent: #df747a;
+  --obx-accent-hover: #ec858b;
+  --obx-accent-soft: rgba(223, 116, 122, 0.12);
+  --obx-shadow: 0 2px 10px rgba(0, 0, 0, 0.13);
+}
+
+/* ==========================================
+   HEADER
+========================================== */
+
+.obx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.obx-header-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.obx-header-icon {
+   width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+  color: var(--obx-card);
+  background: var(--obx-accent);
+}
+
+.obx-header-icon svg {
+   width: 23px;
+  height: 23px;
+}
+
+
+.obx-heading-copy {
+  min-width: 0;
+}
+
+.obx-heading-eyebrow,
+.obx-section-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--obx-subtle);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 1.1px;
+}
+
+.obx-heading-copy h2 {
+  margin: 0;
+  color: var(--obx-text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+}
+
+.obx-heading-copy p {
+  margin: 3px 0 0;
+  color: var(--obx-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.obx-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.obx-record-count {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 7px 11px;
+  border: 1px solid var(--obx-border);
+  border-radius: 7px;
+  background: var(--obx-card);
+  white-space: nowrap;
+}
+
+.obx-record-count strong {
+  color: var(--obx-text);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.obx-record-count span {
+  color: var(--obx-muted);
+  font-size: 9px;
+}
+
+/* ==========================================
+   STATUS PANEL
+========================================== */
+
+.obx-status-panel {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--obx-border);
+  border-radius: 9px;
+  background: var(--obx-card);
+  box-shadow: var(--obx-shadow);
+}
+
+.obx-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.obx-status-heading h3 {
+  margin: 0;
+  color: var(--obx-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.obx-clear-button {
+  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--obx-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.obx-clear-button:hover {
+  color: var(--obx-accent);
+  background: var(--obx-accent-soft);
+}
+
+.obx-clear-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.obx-status-list {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.obx-status-chip {
+  min-height: 33px;
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--obx-border);
+  border-radius: 6px;
+  color: var(--obx-muted);
+  background: var(--obx-card);
+  font: inherit;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.obx-status-chip:hover {
+  border-color: var(--obx-border-strong);
+  background: var(--obx-card-soft);
+}
+
+.obx-status-chip.is-active {
+  border-color: var(--obx-accent);
+  color: var(--obx-accent);
+  background: var(--obx-accent-soft);
+}
+
+.obx-chip-icon {
+  display: flex;
+  align-items: center;
+}
+
+.obx-chip-icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.obx-chip-label {
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.obx-chip-count {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--obx-muted);
+  background: var(--obx-card-soft);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.obx-status-chip.is-active .obx-chip-count {
+  color: var(--obx-accent);
+  background: var(--obx-card);
+}
+
+/* ==========================================
+   TOOLBAR
+========================================== */
+
+.obx-toolbar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--obx-border);
+  border-radius: 8px;
+  background: var(--obx-card);
+}
+
+.obx-toolbar-left,
+.obx-toolbar-title,
+.obx-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.obx-toolbar-actions .filter-field input {
+  border: 1px solid var(--obx-border);
+  border-radius: 8px;
+  color: var(--obx-text);
+  background: var(--obx-card);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+.obx-toolbar-title {
+  color: var(--obx-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.obx-toolbar-title > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--obx-muted);
+}
+
+.obx-toolbar-total {
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--obx-muted);
+  background: var(--obx-card-soft);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.obx-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.obx-active-filters button {
+  max-width: 180px;
+  padding: 4px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--obx-border);
+  border-radius: 4px;
+  color: var(--obx-muted);
+  background: var(--obx-card-soft);
+  font: inherit;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.obx-active-filters button svg {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+}
+
+.obx-active-filters button:hover {
+  color: var(--obx-accent);
+  border-color: var(--obx-accent);
+}
+
+.obx-toolbar-actions {
+  justify-content: flex-end;
+}
+
+/* ==========================================
+   TABLE PANEL
+========================================== */
+
+.obx-table-panel {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--obx-border);
+  border-radius: 9px;
+  background: var(--obx-card);
+  box-shadow: var(--obx-shadow);
+}
+
+.obx-table-scroll {
+  width: 1188px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--obx-border-strong) transparent;
+}
+
+.obx-table-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.obx-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: var(--obx-border-strong);
+}
+
+.obx-table {
+  width: 100%;
+  min-width: 1800px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--obx-text);
+  font-size: 10px;
+  text-align: left;
+}
+
+.obx-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.obx-table th {
+  height: 39px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--obx-border);
+  color: var(--obx-muted);
+  background: var(--obx-card-soft);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.35px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.obx-table td {
+  height: 46px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--obx-border);
+  color: var(--obx-muted);
+  font-size: 10px;
+  font-weight: 450;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.obx-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.obx-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.obx-table tbody tr:hover {
+  background: var(--obx-card-soft);
+}
+
+.obx-primary-cell {
+  color: var(--obx-accent);
+  font-weight: 700;
+}
+
+.obx-candidate-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.obx-candidate-cell strong {
+  color: var(--obx-text);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.obx-candidate-cell span {
+  color: var(--obx-subtle);
+  font-size: 8px;
+}
+
+/* ==========================================
+   STATUS BADGES
+========================================== */
+
+.obx-pill,
+.obx-status-badge {
+  min-height: 21px;
+  padding: 4px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+}
+
+.obx-status-joined,
+.obx-offer-accepted,
+.obx-bgv-cleared,
+.obx-req-active {
+  color: #23845b;
+  border-color: rgba(35, 132, 91, 0.16);
+  background: rgba(35, 132, 91, 0.09);
+}
+
+.obx-status-pending,
+.obx-offer-released,
+.obx-bgv-in_progress {
+  color: #a87922;
+  border-color: rgba(168, 121, 34, 0.18);
+  background: rgba(168, 121, 34, 0.09);
+}
+
+.obx-status-progress,
+.obx-bgv-not_started,
+.obx-offer-initiated {
+  color: #4778bd;
+  border-color: rgba(71, 120, 189, 0.17);
+  background: rgba(71, 120, 189, 0.09);
+}
+
+.obx-status-hold,
+.obx-status-backout,
+.obx-offer-declined,
+.obx-bgv-failed {
+  color: #c04c55;
+  border-color: rgba(192, 76, 85, 0.17);
+  background: rgba(192, 76, 85, 0.09);
+}
+
+.obx-status-completed,
+.obx-offer-backout {
+  color: #7b62b2;
+  border-color: rgba(123, 98, 178, 0.17);
+  background: rgba(123, 98, 178, 0.09);
+}
+
+.obx-offer-hold {
+  color: #a87922;
+  background: rgba(168, 121, 34, 0.09);
+}
+
+.obx-doc-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.obx-doc-flag > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.obx-doc-flag.is-pending {
+  color: #b47c26;
+}
+
+.obx-doc-flag.is-pending > span {
+  background: #d5a344;
+}
+
+.obx-doc-flag.is-clear {
+  color: #23845b;
+}
+
+.obx-doc-flag.is-clear > span {
+  background: #35a875;
+}
+
+/* ==========================================
+   UPDATE BUTTON
+========================================== */
+
+.obx-update-button {
+  min-height: 28px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--obx-border);
+  border-radius: 5px;
+  color: var(--obx-muted);
+  background: var(--obx-card);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.obx-update-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.obx-update-button:hover {
+  color: var(--obx-accent);
+  border-color: var(--obx-accent);
+  background: var(--obx-accent-soft);
+}
+
+/* ==========================================
+   ALERTS
+========================================== */
+
+.obx-alert {
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.obx-alert-error {
+  color: #bd3942;
+  border-color: rgba(189, 57, 66, 0.2);
+  background: rgba(189, 57, 66, 0.08);
+}
+
+.obx-alert-success {
+  color: #23845b;
+  border-color: rgba(35, 132, 91, 0.2);
+  background: rgba(35, 132, 91, 0.08);
+}
+
+.obx-screen.obx-dark .obx-alert-error {
+  color: #ff8c92;
+}
+
+.obx-screen.obx-dark .obx-alert-success {
+  color: #72d4a8;
+}
+
+/* ==========================================
+   MODAL
+========================================== */
+
+.obx-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  background: rgba(13, 19, 28, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.obx-modal {
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100dvh - 40px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--obx-border);
+  border-radius: 11px;
+  background: var(--obx-card);
+  box-shadow: 0 22px 65px rgba(0, 0, 0, 0.22);
+}
+
+.obx-modal-header {
+  padding: 18px 21px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  border-bottom: 1px solid var(--obx-border);
+}
+
+.obx-modal-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--obx-accent);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 1.1px;
+}
+
+.obx-modal-header h3 {
+  margin: 0;
+  color: var(--obx-text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.obx-modal-header p {
+  margin: 5px 0 0;
+  color: var(--obx-muted);
+  font-size: 10px;
+}
+
+.obx-modal-close {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--obx-border);
+  border-radius: 6px;
+  color: var(--obx-muted);
+  background: var(--obx-card);
+  cursor: pointer;
+}
+
+.obx-modal-close:hover {
+  color: var(--obx-accent);
+  background: var(--obx-accent-soft);
+}
+
+.obx-modal-close svg {
+  width: 15px;
+  height: 15px;
+}
+
+.obx-modal-body {
+  min-height: 0;
+  padding: 20px 21px;
+  overflow-y: auto;
+}
+
+.obx-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.obx-form-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.obx-form-field > span {
+  color: var(--obx-text);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.obx-form-field input,
+.obx-form-field select,
+.obx-form-field textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 39px;
+  padding: 8px 10px;
+  border: 1px solid var(--obx-border-strong);
+  border-radius: 6px;
+  outline: none;
+  color: var(--obx-text);
+  background: var(--obx-card);
+  font-family: inherit;
+  font-size: 11px;
+  transition: 0.18s ease;
+}
+
+.obx-form-field textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.obx-form-field input:focus,
+.obx-form-field select:focus,
+.obx-form-field textarea:focus {
+  border-color: var(--obx-accent);
+  box-shadow: 0 0 0 3px var(--obx-accent-soft);
+}
+
+.obx-form-field input::placeholder,
+.obx-form-field textarea::placeholder {
+  color: var(--obx-subtle);
+}
+
+.obx-field-full {
+  grid-column: 1 / -1;
+}
+
+.obx-modal-footer {
+  padding: 13px 21px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  border-top: 1px solid var(--obx-border);
+  background: var(--obx-card-soft);
+}
+
+.obx-cancel-button,
+.obx-save-button {
+  min-height: 35px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.obx-cancel-button {
+  border: 1px solid var(--obx-border-strong);
+  color: var(--obx-muted);
+  background: var(--obx-card);
+}
+
+.obx-cancel-button:hover:not(:disabled) {
+  color: var(--obx-text);
+  border-color: var(--obx-muted);
+}
+
+.obx-save-button {
+  border: 1px solid var(--obx-accent);
+  color: #ffffff;
+  background: var(--obx-accent);
+}
+
+.obx-save-button:hover:not(:disabled) {
+  border-color: var(--obx-accent-hover);
+  background: var(--obx-accent-hover);
+}
+
+.obx-save-button:disabled,
+.obx-cancel-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.obx-save-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.obx-modal-loading {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--obx-muted);
+  font-size: 11px;
+}
+
+.obx-spinner {
+  width: 23px;
+  height: 23px;
+  border: 2px solid var(--obx-border);
+  border-top-color: var(--obx-accent);
+  border-radius: 50%;
+  animation: obx-spin 0.7s linear infinite;
+}
+
+@keyframes obx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================
+   TABLET
+========================================== */
+
+@media (max-width: 1000px) {
+  .obx-toolbar {
+    align-items: flex-start;
+  }
+
+  .obx-toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ==========================================
+   MOBILE
+========================================== */
+
+@media (max-width: 650px) {
+  .obx-screen {
+    gap: 12px;
+  }
+
+  .obx-header {
+    align-items: flex-start;
+  }
+
+  .obx-header-icon {
+    width: 35px;
+    height: 35px;
+    flex-basis: 35px;
+  }
+
+  .obx-heading-copy h2 {
+    font-size: 18px;
+  }
+
+  .obx-heading-copy p {
+    font-size: 9px;
+  }
+
+  .obx-record-count {
+    padding: 6px 8px;
+  }
+
+  .obx-status-panel {
+    padding: 12px;
+  }
+
+  .obx-status-list {
+    gap: 6px;
+  }
+
+  .obx-status-chip {
+    min-height: 31px;
+    padding: 4px 7px;
+  }
+
+  .obx-toolbar {
+    padding: 10px;
+  }
+
+  .obx-toolbar-left {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .obx-toolbar-actions {
+    flex-wrap: wrap;
+  }
+
+  .obx-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .obx-field-full {
+    grid-column: auto;
+  }
+
+  .obx-modal-overlay {
+    padding: 10px;
+  }
+
+  .obx-modal {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .obx-modal-header,
+  .obx-modal-body {
+    padding: 15px;
+  }
+
+  .obx-modal-footer {
+    padding: 12px 15px;
+  }
+}
+
+@media (max-width: 420px) {
+  .obx-header-meta {
+    display: none;
+  }
+
+  .obx-toolbar-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -1,14 +1,16 @@
+
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { get } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
 import { IconInbox } from '../../components/Icons';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
+import './../pageCss/MyWorkScreen.css';
 
 const SECTIONS = [
-  { key: 'needs', title: 'Needs you' },
-  { key: 'waiting', title: 'Waiting' },
-  { key: 'dates', title: 'Dates' },
+  { key: 'needs', title: 'Needs you', description: 'Requires your attention' },
+  { key: 'waiting', title: 'Waiting', description: 'Pending responses or updates' },
+  { key: 'dates', title: 'Dates', description: 'Upcoming deadlines and events' },
 ];
 
 export default function MyWorkScreen() {
@@ -16,10 +18,11 @@ export default function MyWorkScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('needs');
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+
     get(ENDPOINTS.WORK_MINE)
       .then((res) => {
         if (!active) return;
@@ -27,64 +30,169 @@ export default function MyWorkScreen() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err?.response?.data?.message || err?.message || 'Failed to load work');
+        setError(
+          err?.response?.data?.message ||
+          err?.message ||
+          'Failed to load work'
+        );
         setItems([]);
       })
       .finally(() => active && setLoading(false));
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const openItem = (item) => {
     const next = { tab: item.tab || 'work' };
-    if (item.requirementId && (item.tab === 'assign' || item.tab === 'your' || item.tab === 'lead-assign')) {
+
+    if (
+      item.requirementId &&
+      ['assign', 'your', 'lead-assign'].includes(item.tab)
+    ) {
       next.req = item.requirementId;
     }
+
     setSearchParams(next);
   };
 
   if (loading) return <ScreenSkeleton rows={6} />;
 
+  const activeSection = SECTIONS.find(
+    (section) => section.key === activeTab
+  );
+
+  const activeItems = items.filter(
+    (item) => item.section === activeTab
+  );
+
   return (
-    <div className="my-work-screen">
-      <div className="assign-head">
-        <span className="assign-badge"><IconInbox /></span>
-        <div>
-          <h2 className="assign-title">My Work</h2>
-          <p className="assign-sub">What needs you today — handoffs, stalled reqs, and upcoming dates.</p>
+    <div className="work-inbox-screen">
+
+      {/* Header */}
+      <header className="work-inbox-header">
+        <div className="work-inbox-heading">
+          <span className="work-inbox-icon">
+            <IconInbox />
+          </span>
+
+          <div className="work-inbox-heading-content">
+            <h2>My Work</h2>
+            <p>Your tasks, pending actions and important dates.</p>
+          </div>
         </div>
-        {items.length > 0 && <span className="yr-count">{items.length}</span>}
-      </div>
-      {error && <div className="add-error">{error}</div>}
-      {!error && items.length === 0 && (
-        <EmptyState
-          icon={IconInbox}
-          title="You are clear"
-          description="Nothing is waiting on you right now."
-        />
+
+        <div className="work-inbox-total">
+          <span>Total items</span>
+          <strong>{items.length}</strong>
+        </div>
+      </header>
+
+      {error && (
+        <div className="work-inbox-error">{error}</div>
       )}
-      {SECTIONS.map((section) => {
-        const group = items.filter((i) => i.section === section.key);
-        if (!group.length) return null;
-        return (
-          <section key={section.key} className="my-work-section">
-            <h3 className="my-work-section-title">{section.title}</h3>
-            <div className="my-work-grid">
-              {group.map((item) => (
+
+      {!error && (
+        <>
+          {/* Navigation tabs */}
+          <div className="work-inbox-tabs" role="tablist" aria-label="My work sections">
+            {SECTIONS.map((section) => {
+              const count = items.filter(
+                (item) => item.section === section.key
+              ).length;
+
+              return (
                 <button
-                  key={item.id}
+                  key={section.key}
                   type="button"
-                  className={`my-work-card my-work-card--${item.severity || 'medium'}`}
-                  onClick={() => openItem(item)}
+                  role="tab"
+                  aria-selected={activeTab === section.key}
+                  aria-controls="work-inbox-panel"
+                  className={`work-inbox-tab ${
+                    activeTab === section.key ? 'is-active' : ''
+                  }`}
+                  onClick={() => setActiveTab(section.key)}
                 >
-                  <span className="my-work-kind">{item.kind?.replace(/_/g, ' ')}</span>
-                  <strong>{item.title}</strong>
-                  <span className="my-work-sub">{item.subtitle}</span>
+                  <span>{section.title}</span>
+                  <span className="work-inbox-tab-count">{count}</span>
                 </button>
-              ))}
+              );
+            })}
+          </div>
+
+          {/* Selected tab content */}
+          <section
+            id="work-inbox-panel"
+            className="work-inbox-panel"
+            role="tabpanel"
+          >
+            <div className="work-inbox-panel-header">
+              <div>
+                <h3>{activeSection.title}</h3>
+                <p>{activeSection.description}</p>
+              </div>
+
+              <span className="work-inbox-panel-count">
+                {activeItems.length} items
+              </span>
             </div>
+
+            {activeItems.length === 0 ? (
+              <div className="work-inbox-empty">
+                <EmptyState
+                  icon={IconInbox}
+                  title="You're all caught up"
+                  description="Nothing in this section right now."
+                />
+              </div>
+            ) : (
+              <div className="work-inbox-list">
+                {activeItems.map((item) => {
+                  const severity = (
+                    item.severity || 'medium'
+                  ).toLowerCase();
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`work-inbox-item severity-${severity}`}
+                      onClick={() => openItem(item)}
+                    >
+                      <span className="work-inbox-item-indicator" />
+
+                      <span className="work-inbox-item-content">
+                        <span className="work-inbox-item-type">
+                          {item.kind?.replace(/_/g, ' ')}
+                        </span>
+
+                        <strong className="work-inbox-item-title">
+                          {item.title}
+                        </strong>
+
+                        {item.subtitle && (
+                          <span className="work-inbox-item-subtitle">
+                            {item.subtitle}
+                          </span>
+                        )}
+                      </span>
+
+                      <span className="work-inbox-item-actions">
+                        <span className={`work-inbox-priority priority-${severity}`}>
+                          {item.severity || 'Medium'}
+                        </span>
+
+                        <span className="work-inbox-arrow">→</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </section>
-        );
-      })}
+        </>
+      )}
     </div>
   );
 }

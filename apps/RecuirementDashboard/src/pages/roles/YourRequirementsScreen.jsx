@@ -16,6 +16,7 @@ import { fetchAllPages } from '../../utils/fetchAllPages';
 import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
+import './../pageCss/YourRequirementsScreen.css';
 
 function normalizeMemberList(res) {
   if (Array.isArray(res)) return res;
@@ -517,331 +518,476 @@ export default function YourRequirementsScreen() {
     }
   };
 
-  return (
-    <div className="yr-screen yr-requirements">
-      <div className="yr-head">
-        <span className="yr-badge"><IconList /></span>
-        <div>
-          <h2 className="yr-title">Requirements</h2>
-          <p className="yr-sub">
-            {user?.userType === 'sales'
-              ? 'Requirements you own, fetched live from the backend.'
-              : user?.userType === 'sales_lead'
-                ? 'All requirements — Sales Lead can reassign sales owners.'
-                : 'All requirements, fetched live from the backend.'}
-          </p>
+   return (
+    <div className="reqx-screen">
+      {/* Page header */}
+      <header className="reqx-page-header">
+        <div className="reqx-heading">
+          <span className="reqx-heading-icon"><IconList /></span>
+          <div className="reqx-heading-copy">
+            <h2>Requirements</h2>
+            <p>
+              {user?.userType === 'sales'
+                ? 'Manage the recruitment requirements assigned to you.'
+                : user?.userType === 'sales_lead'
+                  ? 'Monitor requirements and manage sales ownership.'
+                  : 'Monitor and manage all recruitment requirements.'}
+            </p>
+          </div>
+           
         </div>
-        {!loading && items.length > 0 && <span className="yr-count">{visible.length} shown</span>}
-      </div>
 
+        <div className="reqx-header-meta">
+          {/* {!loading && !error && (
+            <span className="reqx-total">
+              <strong>{visible.length}</strong>
+              <span>of {items.length} requirements</span>
+            </span>
+          )} */}
+          <div className="reqx-filter-field reqx-search-field">
+              {/* <span className="reqx-field-label">Search requirements</span> */}
+              <div className="reqx-search-control">
+                <TableSearch
+                  value={listSearch}
+                  onChange={setListSearch}
+                  placeholder="Search ID, client, role..."
+                />
+              </div>
+            </div>
+        </div>
+      </header>
+
+      {/* Filters */}
       {!loading && !error && items.length > 0 && (
-        <div className="filter-bar">
-          <div className="filter-bar-head">
-            <IconFilter />
-            <span>Filters</span>
-            {hasFilters && <span className="filter-count">{[filters.clientId, filters.priorityCode, filters.status].filter(Boolean).length + (listSearch.trim() ? 1 : 0)} active</span>}
+        <section className="reqx-filter-panel">
+          <div className="reqx-filter-heading">
+            <div className="reqx-section-label">
+              <IconFilter />
+              <span>Filter requirements</span>
+            </div>
+
             {hasFilters && (
-              <button type="button" className="filter-clear" onClick={clearFilters}>
-                Clear
+              <button
+                type="button"
+                className="reqx-text-button"
+                onClick={clearFilters}
+              >
+                <IconX />
+                Clear all
               </button>
             )}
           </div>
-          {hasFilters && (
-            <div className="filter-chips" aria-label="Active filters">
-              {filters.clientId && (
-                <button type="button" className="filter-chip" onClick={() => update('clientId', '')}>
-                  Client: {clients.find((c) => c.id === filters.clientId)?.name || filters.clientId}
-                  <IconX width={12} height={12} />
-                </button>
-              )}
-              {filters.priorityCode && (
-                <button type="button" className="filter-chip" onClick={() => update('priorityCode', '')}>
-                  Priority: {filters.priorityCode}
-                  <IconX width={12} height={12} />
-                </button>
-              )}
-              {filters.status && (
-                <button type="button" className="filter-chip" onClick={() => update('status', '')}>
-                  Status: {filters.status}
-                  <IconX width={12} height={12} />
-                </button>
-              )}
-              {listSearch.trim() && (
-                <button type="button" className="filter-chip" onClick={() => setListSearch('')}>
-                  Search: {listSearch.trim()}
-                  <IconX width={12} height={12} />
-                </button>
-              )}
-            </div>
-          )}
-          <div className="filter-fields">
-            <div className="filter-field">
-              <span className="filter-label"><IconBriefcase /> Client</span>
-              <select value={filters.clientId} onChange={(e) => update('clientId', e.target.value)}>
-                <option value="">All</option>
+
+          <div className="reqx-filter-grid">
+            <label className="reqx-filter-field">
+              <span className="reqx-field-label">
+                <IconBriefcase />
+                Client
+              </span>
+              <select
+                className="reqx-control"
+                value={filters.clientId}
+                onChange={(e) => update('clientId', e.target.value)}
+              >
+                <option value="">All clients</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-            </div>
-            <div className="filter-field">
-              <span className="filter-label"><IconFlag /> Priority</span>
-              <select value={filters.priorityCode} onChange={(e) => update('priorityCode', e.target.value)}>
-                <option value="">All</option>
+            </label>
+
+            <label className="reqx-filter-field">
+              <span className="reqx-field-label">
+                <IconFlag />
+                Priority
+              </span>
+              <select
+                className="reqx-control"
+                value={filters.priorityCode}
+                onChange={(e) => update('priorityCode', e.target.value)}
+              >
+                <option value="">All priorities</option>
                 {PRIORITIES.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
-            </div>
-            <div className="filter-field">
-              <span className="filter-label"><IconClipboardCheck /> Status</span>
-              <select value={filters.status} onChange={(e) => update('status', e.target.value)}>
-                <option value="">All</option>
+            </label>
+
+            <label className="reqx-filter-field">
+              <span className="reqx-field-label">
+                <IconClipboardCheck />
+                Status
+              </span>
+              <select
+                className="reqx-control"
+                value={filters.status}
+                onChange={(e) => update('status', e.target.value)}
+              >
+                <option value="">All statuses</option>
                 {STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {s.replace(/_/g, ' ')}
+                  </option>
                 ))}
               </select>
+            </label>
+
+           
+          </div>
+
+          {hasFilters && (
+            <div className="reqx-active-filters">
+              <span className="reqx-active-label">Active filters</span>
+
+              {filters.clientId && (
+                <button
+                  type="button"
+                  className="reqx-filter-chip"
+                  onClick={() => update('clientId', '')}
+                >
+                  Client: {clients.find((c) => c.id === filters.clientId)?.name || filters.clientId}
+                  <IconX />
+                </button>
+              )}
+
+              {filters.priorityCode && (
+                <button
+                  type="button"
+                  className="reqx-filter-chip"
+                  onClick={() => update('priorityCode', '')}
+                >
+                  Priority: {filters.priorityCode}
+                  <IconX />
+                </button>
+              )}
+
+              {filters.status && (
+                <button
+                  type="button"
+                  className="reqx-filter-chip"
+                  onClick={() => update('status', '')}
+                >
+                  Status: {filters.status.replace(/_/g, ' ')}
+                  <IconX />
+                </button>
+              )}
+
+              {listSearch.trim() && (
+                <button
+                  type="button"
+                  className="reqx-filter-chip"
+                  onClick={() => setListSearch('')}
+                >
+                  Search: {listSearch.trim()}
+                  <IconX />
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Feedback messages */}
+      {statusMessage && (
+        <div className="reqx-alert reqx-alert--success">{statusMessage}</div>
+      )}
+      {statusError && (
+        <div className="reqx-alert reqx-alert--error">{statusError}</div>
+      )}
+
+      {/* Records toolbar */}
+      {!loading && !error && items.length > 0 && (
+        <section className="reqx-records-toolbar">
+          <div className="reqx-records-heading">
+            <div>
+              <h3>Requirement records</h3>
+              <span className="reqx-records-subtitle">
+                {visible.length} {visible.length === 1 ? 'record' : 'records'} found
+              </span>
             </div>
           </div>
-          <TableSearch
-            value={listSearch}
-            onChange={setListSearch}
-            placeholder="Search req ID, client, role…"
+
+          <div className="reqx-records-actions">
+            {canDelete && selectedIds.size > 0 && (
+              <div className="reqx-selection-info">
+                <span>{selectedIds.size} selected</span>
+                <button
+                  type="button"
+                  className="reqx-button reqx-button--danger"
+                  disabled={bulkDeleting || Boolean(deletingId)}
+                  onClick={deleteSelectedRequirements}
+                >
+                  {bulkDeleting ? 'Deleting...' : 'Delete selected'}
+                </button>
+                <button
+                  type="button"
+                  className="reqx-button reqx-button--ghost"
+                  disabled={bulkDeleting}
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Clear selection
+                </button>
+              </div>
+            )}
+
+            <DownloadExcelButton
+              filename="requirements"
+              rows={visible}
+              columns={[
+                { label: 'Req ID', value: (r) => r.publicId || '—' },
+                { label: 'Client', value: (r) => r.client?.name || '—' },
+                { label: 'Role / Skill', value: (r) => r.roleSkill || '—' },
+                { label: 'Job Family', value: (r) => r.jobFamily?.name || r.jobFamilyId || '—' },
+                { label: 'Positions', value: (r) => r.numberOfPositions ?? '—' },
+                { label: 'Fill', value: (r) => `${r.closedPositions ?? 0}/${r.openPositions ?? '—'}` },
+                { label: 'Pipeline', value: (r) => (r.furthestPipelineStage ? String(r.furthestPipelineStage).replace(/_/g, ' ') : '—') },
+                { label: 'RAG', value: (r) => (r.taHandoffSlaRag && r.taHandoffSlaRag !== 'NONE' ? r.taHandoffSlaRag : '—') },
+                { label: 'Priority', value: (r) => r.priorityCode || '—' },
+                { label: 'Job Location', value: (r) => r.jobLocation || '—' },
+                { label: 'Sales Owner', value: (r) => r.salesOwner?.fullName || '—' },
+                { label: 'TA Lead', value: (r) => formatTaLeadNames(r) },
+                { label: 'TA Owners', value: (r) => formatTaOwnerNames(r) },
+                { label: 'Status', value: (r) => r.status || 'ACTIVE' },
+                { label: 'Added', value: (r) => formatDate(r.createdAt) },
+              ]}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* Main content */}
+      {loading ? (
+        <div className="reqx-loading">
+          <ScreenSkeleton rows={8} />
+        </div>
+      ) : error ? (
+        <div className="reqx-empty-state">
+          <div className="reqx-alert reqx-alert--error">{error}</div>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="reqx-empty-state">
+          <EmptyState
+            icon={IconList}
+            title="No requirements found"
+            description="Use Add Request to raise one."
           />
         </div>
-      )}
-
-      {statusMessage && <div className="add-success">{statusMessage}</div>}
-      {statusError && <div className="add-error">{statusError}</div>}
-
-      {canDelete && selectedIds.size > 0 && (
-        <div className="yr-bulk-bar">
-          <span>{selectedIds.size} selected</span>
-          <button
-            type="button"
-            className="cand-edit yr-status-btn yr-status-btn--danger"
-            disabled={bulkDeleting || Boolean(deletingId)}
-            onClick={deleteSelectedRequirements}
-          >
-            {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size} selected`}
-          </button>
-          <button
-            type="button"
-            className="filter-clear"
-            disabled={bulkDeleting}
-            onClick={() => setSelectedIds(new Set())}
-          >
-            Clear selection
-          </button>
-        </div>
-      )}
-
-      {!loading && !error && (
-        <DownloadExcelButton
-          filename="requirements"
-          rows={visible}
-          columns={[
-            { label: 'Req ID', value: (r) => r.publicId || '—' },
-            { label: 'Client', value: (r) => r.client?.name || '—' },
-            { label: 'Role / Skill', value: (r) => r.roleSkill || '—' },
-            { label: 'Job Family', value: (r) => r.jobFamily?.name || r.jobFamilyId || '—' },
-            { label: 'Positions', value: (r) => r.numberOfPositions ?? '—' },
-            { label: 'Fill', value: (r) => `${r.closedPositions ?? 0}/${r.openPositions ?? '—'}` },
-            { label: 'Pipeline', value: (r) => (r.furthestPipelineStage ? String(r.furthestPipelineStage).replace(/_/g, ' ') : '—') },
-            { label: 'RAG', value: (r) => (r.taHandoffSlaRag && r.taHandoffSlaRag !== 'NONE' ? r.taHandoffSlaRag : '—') },
-            { label: 'Priority', value: (r) => r.priorityCode || '—' },
-            { label: 'Job Location', value: (r) => r.jobLocation || '—' },
-            { label: 'Sales Owner', value: (r) => r.salesOwner?.fullName || '—' },
-            { label: 'TA Lead', value: (r) => formatTaLeadNames(r) },
-            { label: 'TA Owners', value: (r) => formatTaOwnerNames(r) },
-            { label: 'Status', value: (r) => r.status || 'ACTIVE' },
-            { label: 'Added', value: (r) => formatDate(r.createdAt) },
-          ]}
-        />
-      )}
-
-      {loading ? (
-        <ScreenSkeleton rows={8} />
-      ) : error ? (
-        <div className="add-error">{error}</div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={IconList}
-          title="No requirements found"
-          description="Use Add Request to raise one."
-        />
       ) : visible.length === 0 ? (
-        <EmptyState
-          icon={IconList}
-          title="No matching requirements"
-          description="Try a different search or clear filters."
-        />
+        <div className="reqx-empty-state">
+          <EmptyState
+            icon={IconList}
+            title="No matching requirements"
+            description="Try a different search or clear filters."
+          />
+        </div>
       ) : (
-        <div className="table-wrap yr-table-card">
-          <table className="data-table yr-table">
-            <thead>
-              <tr>
-                {canDelete && (
-                  <th className="yr-select-col" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={allVisibleSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected;
-                      }}
-                      onChange={(e) => toggleSelectAllVisible(e.target.checked)}
-                      aria-label="Select all visible requirements"
-                    />
-                  </th>
-                )}
-                <th>Req ID</th>
-                <th>Client</th>
-                <th>Role / Skill</th>
-                <th>Job Family</th>
-                <th>Positions</th>
-                <th className="yr-pulse-col">Fill</th>
-                <th className="yr-pulse-col">Pipeline</th>
-                <th className="yr-pulse-col">RAG</th>
-                <th>Priority</th>
-                <th>Job Location</th>
-                <th>Sales Owner</th>
-                <th>TA Lead</th>
-                <th>TA Owners</th>
-                <th>Status</th>
-                <th>Added</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((r) => (
-                <tr key={r.id || r.publicId} onClick={() => openRequirementDetails(r)}>
+        <section className="reqx-table-card">
+          <div className="reqx-table-scroll">
+            <table className="reqx-table">
+              <thead>
+                <tr>
                   {canDelete && (
-                    <td className="yr-select-col" onClick={(e) => e.stopPropagation()}>
+                    <th className="reqx-check-cell" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
-                        checked={selectedIds.has(r.id)}
-                        onChange={(e) => toggleSelect(r.id, e.target.checked)}
-                        aria-label={`Select ${r.publicId || r.id}`}
+                        checked={allVisibleSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someVisibleSelected && !allVisibleSelected;
+                        }}
+                        onChange={(e) => toggleSelectAllVisible(e.target.checked)}
+                        aria-label="Select all visible requirements"
                       />
-                    </td>
+                    </th>
                   )}
-                  <td>{r.publicId || '—'}</td>
-                  <td>{r.client?.name || '—'}</td>
-                  <td>{r.roleSkill || '—'}</td>
-                  <td>{r.jobFamily?.name || r.jobFamilyId || '—'}</td>
-                  <td>{r.numberOfPositions ?? '—'}</td>
-                  <td className="yr-pulse-col" title="Closed / open positions">
-                    {r.closedPositions ?? 0}/{r.openPositions ?? '—'}
-                  </td>
-                  <td className="yr-pulse-col">
-                    {r.furthestPipelineStage
-                      ? String(r.furthestPipelineStage).replace(/_/g, ' ')
-                      : '—'}
-                  </td>
-                  <td className="yr-pulse-col">
-                    {r.taHandoffSlaRag && r.taHandoffSlaRag !== 'NONE' ? (
-                      <span className={`yr-rag yr-rag--${String(r.taHandoffSlaRag).toLowerCase()}`}>
-                        {r.taHandoffSlaRag}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td>
-                    {r.priorityCode ? (
-                      <span className={`yr-priority ${(r.priorityCode || '').toLowerCase()}`}>{r.priorityCode}</span>
-                    ) : '—'}
-                  </td>
-                  <td>{r.jobLocation || '—'}</td>
-                  <td>{r.salesOwner?.fullName || '—'}</td>
-                  <td>{formatTaLeadNames(r)}</td>
-                  <td>{formatTaOwnerNames(r)}</td>
-                  <td>
-                    <span className={`yr-status ${(r.status || 'ACTIVE').toLowerCase()}`}>{r.status || 'ACTIVE'}</span>
-                  </td>
-                  <td>{formatDate(r.createdAt)}</td>
-                  <td>
-                    <div className="yr-actions" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="cand-edit"
-                        onClick={() => openRequirementDetails(r)}
-                        title="View pipeline"
-                      >
-                        <IconClipboardCheck /> Pipeline
-                      </button>
-                      <button className="cand-edit" onClick={() => openEdit(r)} title="Edit">
-                        <IconEdit /> Edit
-                      </button>
-                      {canManageStatus && (r.status || 'ACTIVE') === 'ACTIVE' && (
-                        <button
-                          className="cand-edit yr-status-btn"
-                          disabled={statusBusyId === r.id}
-                          onClick={() => openStatusReasonModal(r, 'ON_HOLD')}
-                          title="Put on hold"
-                        >
-                          Hold
-                        </button>
-                      )}
-                      {canManageStatus && r.status === 'ON_HOLD' && (
-                        <button
-                          className="cand-edit yr-status-btn"
-                          disabled={statusBusyId === r.id}
-                          onClick={() => changeRequirementStatus(r, 'ACTIVE')}
-                          title="Resume recruiting"
-                        >
-                          Resume
-                        </button>
-                      )}
-                      {canManageStatus && (r.status === 'ACTIVE' || r.status === 'ON_HOLD') && (
-                        <button
-                          className="cand-edit yr-status-btn yr-status-btn--danger"
-                          disabled={statusBusyId === r.id}
-                          onClick={() => openStatusReasonModal(r, 'CANCELLED')}
-                          title="Cancel requirement"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          className="cand-edit yr-status-btn yr-status-btn--danger"
-                          disabled={deletingId === r.id || bulkDeleting || statusBusyId === r.id}
-                          onClick={() => deleteRequirement(r)}
-                          title="Delete requirement"
-                        >
-                          {deletingId === r.id ? 'Deleting…' : 'Delete'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                  <th>Req ID</th>
+                  <th>Client</th>
+                  <th>Role / Skill</th>
+                  <th>Job Family</th>
+                  <th>Positions</th>
+                  <th>Fill</th>
+                  <th>Pipeline</th>
+                  <th>RAG</th>
+                  <th>Priority</th>
+                  <th>Location</th>
+                  <th>Sales Owner</th>
+                  <th>TA Lead</th>
+                  <th>TA Owners</th>
+                  <th>Status</th>
+                  <th>Added</th>
+                  <th className="reqx-action-heading">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {visible.map((r) => (
+                  <tr
+                    key={r.id || r.publicId}
+                    onClick={() => openRequirementDetails(r)}
+                    className="reqx-data-row"
+                  >
+                    {canDelete && (
+                      <td className="reqx-check-cell" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(r.id)}
+                          onChange={(e) => toggleSelect(r.id, e.target.checked)}
+                          aria-label={`Select ${r.publicId || r.id}`}
+                        />
+                      </td>
+                    )}
+
+                    <td>
+                      <span className="reqx-id">{r.publicId || '—'}</span>
+                    </td>
+                    <td className="reqx-client-cell">{r.client?.name || '—'}</td>
+                    <td className="reqx-role-cell">{r.roleSkill || '—'}</td>
+                    <td>{r.jobFamily?.name || r.jobFamilyId || '—'}</td>
+                    <td className="reqx-number-cell">{r.numberOfPositions ?? '—'}</td>
+                    <td className="reqx-number-cell">
+                      {(r.closedPositions ?? 0)}/{r.openPositions ?? '—'}
+                    </td>
+                    <td>
+                      {r.furthestPipelineStage
+                        ? String(r.furthestPipelineStage).replace(/_/g, ' ')
+                        : '—'}
+                    </td>
+                    <td>
+                      {r.taHandoffSlaRag && r.taHandoffSlaRag !== 'NONE' ? (
+                        <span className={`reqx-rag reqx-rag--${String(r.taHandoffSlaRag).toLowerCase()}`}>
+                          {r.taHandoffSlaRag}
+                        </span>
+                      ) : <span className="reqx-muted">—</span>}
+                    </td>
+                    <td>
+                      {r.priorityCode ? (
+                        <span className={`reqx-priority reqx-priority--${String(r.priorityCode).toLowerCase()}`}>
+                          {r.priorityCode}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td>{r.jobLocation || '—'}</td>
+                    <td>{r.salesOwner?.fullName || '—'}</td>
+                    <td>{formatTaLeadNames(r)}</td>
+                    <td>{formatTaOwnerNames(r)}</td>
+                    <td>
+                      <span className={`reqx-status reqx-status--${String(r.status || 'ACTIVE').toLowerCase()}`}>
+                        {(r.status || 'ACTIVE').replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>{formatDate(r.createdAt)}</td>
+
+                    <td className="reqx-action-cell" onClick={(e) => e.stopPropagation()}>
+                      <div className="reqx-row-actions">
+                        <button
+                          type="button"
+                          className="reqx-icon-button"
+                          onClick={() => openRequirementDetails(r)}
+                          title="View pipeline"
+                          aria-label="View pipeline"
+                        >
+                          <IconClipboardCheck />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="reqx-icon-button"
+                          onClick={() => openEdit(r)}
+                          title="Edit requirement"
+                          aria-label="Edit requirement"
+                        >
+                          <IconEdit />
+                        </button>
+
+                        {canManageStatus && (r.status || 'ACTIVE') === 'ACTIVE' && (
+                          <button
+                            type="button"
+                            className="reqx-small-button"
+                            disabled={statusBusyId === r.id}
+                            onClick={() => changeRequirementStatus(r, 'ON_HOLD')}
+                          >
+                            Hold
+                          </button>
+                        )}
+
+                        {canManageStatus && r.status === 'ON_HOLD' && (
+                          <button
+                            type="button"
+                            className="reqx-small-button"
+                            disabled={statusBusyId === r.id}
+                            onClick={() => changeRequirementStatus(r, 'ACTIVE')}
+                          >
+                            Resume
+                          </button>
+                        )}
+
+                        {canManageStatus && (r.status === 'ACTIVE' || r.status === 'ON_HOLD') && (
+                          <button
+                            type="button"
+                            className="reqx-small-button reqx-small-button--danger"
+                            disabled={statusBusyId === r.id}
+                            onClick={() => changeRequirementStatus(r, 'CANCELLED')}
+                          >
+                            Cancel
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className="reqx-small-button reqx-small-button--danger"
+                            disabled={deletingId === r.id || bulkDeleting || statusBusyId === r.id}
+                            onClick={() => deleteRequirement(r)}
+                          >
+                            {deletingId === r.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="reqx-table-footer">
+            <span>
+              Showing <strong>{visible.length}</strong> of <strong>{items.length}</strong> requirements
+            </span>
+            <span className="reqx-scroll-hint">Scroll horizontally to view all columns</span>
+          </div>
+        </section>
       )}
 
-      
-
+      {/* Requirement pipeline modal */}
       {viewingRequirement && (
-        <div className="modal-overlay" onClick={closeRequirementDetails}>
-          <div className="modal-card detail-modal pipeline-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <div className="pipeline-modal-heading">
+        <div className="reqx-overlay" onClick={closeRequirementDetails}>
+          <div className="reqx-modal reqx-modal--wide" onClick={(e) => e.stopPropagation()}>
+            <div className="reqx-modal-header">
+              <div className="reqx-modal-heading">
+                <span className="reqx-modal-eyebrow">Requirement pipeline</span>
                 <h3>
-                  Candidate pipeline
-                  {(viewingRequirement.publicId || viewingRequirement.id) && (
-                    <span className="kpi-modal-count">{viewingRequirement.publicId || viewingRequirement.id}</span>
-                  )}
-                  <span className={`yr-status ${(viewingRequirement.status || 'ACTIVE').toLowerCase()}`}>
-                    {viewingRequirement.status || 'ACTIVE'}
+                  {viewingRequirement.publicId || viewingRequirement.id}
+                  <span className={`reqx-status reqx-status--${String(viewingRequirement.status || 'ACTIVE').toLowerCase()}`}>
+                    {(viewingRequirement.status || 'ACTIVE').replace(/_/g, ' ')}
                   </span>
                 </h3>
-                <p className="pipeline-modal-sub">
-                  {[viewingRequirement.client?.name, viewingRequirement.roleSkill].filter(Boolean).join(' · ') || 'Pipeline'}
+                <p>
+                  {[viewingRequirement.client?.name, viewingRequirement.roleSkill]
+                    .filter(Boolean)
+                    .join(' · ') || 'Candidate pipeline'}
                 </p>
               </div>
-              <button className="modal-close" onClick={closeRequirementDetails} title="Close">×</button>
+              <button
+                type="button"
+                className="reqx-modal-close"
+                onClick={closeRequirementDetails}
+                aria-label="Close"
+              >
+                <IconX />
+              </button>
             </div>
-            <div className="modal-body">
+
+            <div className="reqx-modal-body">
               <RequirementPipelineBoard
                 requirementId={viewingRequirement.id}
                 requirement={viewingRequirement}
@@ -869,198 +1015,165 @@ export default function YourRequirementsScreen() {
                 } : undefined}
               />
             </div>
-            <div className="modal-foot">
-              <button className="filter-clear" type="button" onClick={closeRequirementDetails}>Close</button>
+
+            <div className="reqx-modal-footer">
+              <button type="button" className="reqx-button reqx-button--secondary" onClick={closeRequirementDetails}>
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Candidate details modal */}
       {viewingCandidate && (
-        <div className="modal-overlay" onClick={() => setViewingCandidate(null)}>
-          <div className="modal-card detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Candidate — {viewingCandidate.publicId || viewingCandidate.name}</h3>
-              <button className="modal-close" onClick={() => setViewingCandidate(null)} title="Close">×</button>
-            </div>
-            <div className="modal-body">
-              <div className="detail-grid detail-grid-2">
-                <div className="detail-item"><span className="detail-label">Name</span><span className="detail-value">{viewingCandidate.name || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Email</span><span className="detail-value">{viewingCandidate.email || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Mobile</span><span className="detail-value">{viewingCandidate.mobile || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Stage</span><span className="detail-value">{viewingCandidate.pipelineLabel || viewingCandidate.stageCode || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Status</span><span className="detail-value">{viewingCandidate.candidateStatus || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Interview</span><span className="detail-value">{viewingCandidate.interviewRound || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Offer</span><span className="detail-value">{viewingCandidate.offer?.statusCode || '—'}</span></div>
-                <div className="detail-item"><span className="detail-label">Onboarding</span><span className="detail-value">{viewingCandidate.onboarding?.statusCode || '—'}</span></div>
+        <div className="reqx-overlay" onClick={() => setViewingCandidate(null)}>
+          <div className="reqx-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="reqx-modal-header">
+              <div className="reqx-modal-heading">
+                <span className="reqx-modal-eyebrow">Candidate details</span>
+                <h3>{viewingCandidate.publicId || viewingCandidate.name}</h3>
               </div>
-              <div className="detail-description mt-sm">{viewingCandidate.remarks || 'No remarks.'}</div>
+              <button
+                type="button"
+                className="reqx-modal-close"
+                onClick={() => setViewingCandidate(null)}
+                aria-label="Close"
+              >
+                <IconX />
+              </button>
+            </div>
+
+            <div className="reqx-modal-body">
+              <div className="reqx-detail-grid">
+                {[
+                  ['Name', viewingCandidate.name],
+                  ['Email', viewingCandidate.email],
+                  ['Mobile', viewingCandidate.mobile],
+                  ['Stage', viewingCandidate.pipelineLabel || viewingCandidate.stageCode],
+                  ['Status', viewingCandidate.candidateStatus],
+                  ['Interview', viewingCandidate.interviewRound],
+                  ['Offer', viewingCandidate.offer?.statusCode],
+                  ['Onboarding', viewingCandidate.onboarding?.statusCode],
+                ].map(([label, value]) => (
+                  <div className="reqx-detail-item" key={label}>
+                    <span>{label}</span>
+                    <strong>{value || '—'}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className="reqx-description">
+                <span className="reqx-field-label">Remarks</span>
+                <p>{viewingCandidate.remarks || 'No remarks.'}</p>
+              </div>
+
               <CandidateResumeSection
                 candidateId={viewingCandidate.id || viewingCandidate.publicId}
                 initialHasResume={viewingCandidate.hasResume}
                 initialFileName={viewingCandidate.resumeFileName}
-                className="detail-item full mt-sm"
+                className="reqx-resume-section"
               />
             </div>
-            <div className="modal-foot">
-              {canDelete && (
-                <button
-                  type="button"
-                  className="cand-edit users-delete-btn"
-                  title="Delete candidate"
-                  onClick={async () => {
-                    const candidateId = viewingCandidate.id || viewingCandidate.publicId;
-                    if (!candidateId) return;
-                    const ok = window.confirm(
-                      'Delete this candidate? The candidate and any linked offer/onboarding will be removed from active views. This cannot be undone from the UI.',
-                    );
-                    if (!ok) return;
-                    try {
-                      const res = await del(`${ENDPOINTS.CANDIDATES}/${candidateId}`);
-                      toast(res?.message || 'Candidate deleted');
-                      setViewingCandidate(null);
-                      setPipelineRefreshKey((k) => k + 1);
-                    } catch (err) {
-                      const msg = err?.response?.data?.message || err?.message || 'Failed to delete candidate';
-                      toast(Array.isArray(msg) ? msg.join(', ') : msg);
-                    }
-                  }}
-                >
-                  <IconTrash />
-                  Delete
-                </button>
-              )}
-              <button className="filter-clear" type="button" onClick={() => setViewingCandidate(null)}>Close</button>
+
+            <div className="reqx-modal-footer">
+              <button type="button" className="reqx-button reqx-button--secondary" onClick={() => setViewingCandidate(null)}>
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {statusModal && (
-        <div className="modal-overlay" onClick={closeStatusReasonModal}>
-          <div className="modal-card detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>
-                {statusModal.nextStatus === 'ON_HOLD' ? 'Put requirement on hold' : 'Cancel requirement'}
-                {(statusModal.requirement?.publicId || statusModal.requirement?.roleSkill) && (
-                  <span className="kpi-modal-count">
-                    {statusModal.requirement.publicId || statusModal.requirement.roleSkill}
-                  </span>
-                )}
-              </h3>
-              <button className="modal-close" onClick={closeStatusReasonModal} title="Close" disabled={Boolean(statusBusyId)}>×</button>
-            </div>
-            <div className="modal-body">
-              {statusError && <div className="add-error">{statusError}</div>}
-              <p className="pipeline-modal-sub">
-                {statusModal.nextStatus === 'ON_HOLD'
-                  ? 'Recruiting pauses until the requirement is resumed. This reason appears on dashboard Hold KPIs.'
-                  : 'Recruiting stops and this appears under Cancelled on the dashboard with the reason below.'}
-              </p>
-              <label className="detail-field">
-                <span className="detail-label">Reason</span>
-                <textarea
-                  rows={4}
-                  value={statusReason}
-                  onChange={(e) => setStatusReason(e.target.value)}
-                  placeholder={statusModal.nextStatus === 'ON_HOLD'
-                    ? 'Why is this requirement on hold?'
-                    : 'Why is this requirement cancelled?'}
-                  disabled={Boolean(statusBusyId)}
-                />
-              </label>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="filter-clear" onClick={closeStatusReasonModal} disabled={Boolean(statusBusyId)}>
-                Back
-              </button>
+      {/* Edit requirement modal */}
+      {editing && (
+        <div className="reqx-overlay" onClick={closeEdit}>
+          <div className="reqx-modal reqx-modal--edit" onClick={(e) => e.stopPropagation()}>
+            <div className="reqx-modal-header">
+              <div className="reqx-modal-heading">
+                <span className="reqx-modal-eyebrow">Manage requirement</span>
+                <h3>Edit requirement</h3>
+                <p>{editing.publicId || editing.id}</p>
+              </div>
               <button
                 type="button"
-                className={statusModal.nextStatus === 'CANCELLED' ? 'cand-edit yr-status-btn--danger' : 'cand-edit'}
-                disabled={Boolean(statusBusyId) || !statusReason.trim()}
-                onClick={() => changeRequirementStatus(statusModal.requirement, statusModal.nextStatus, statusReason)}
+                className="reqx-modal-close"
+                onClick={closeEdit}
+                aria-label="Close"
               >
-                {statusBusyId === statusModal.requirement?.id
-                  ? 'Saving…'
-                  : statusModal.nextStatus === 'ON_HOLD'
-                    ? 'Confirm Hold'
-                    : 'Confirm Cancel'}
+                <IconX />
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {editing && (
-        <div className="modal-overlay" onClick={closeEdit}>
-          <div className="modal-card detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Edit Requirement {editing.publicId || editing.id}</h3>
-              <button className="modal-close" onClick={closeEdit} title="Close">×</button>
-            </div>
             <form onSubmit={handleSave}>
-              <div className="modal-body">
-                <div className="detail-grid">
-                  <div className="detail-field">
-                    <span className="detail-label">Requirement Date</span>
-                    <input type="date" value={form.requirementDate} onChange={(e) => setField('requirementDate', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Client</span>
+              <div className="reqx-modal-body">
+                <div className="reqx-form-grid">
+                  <label className="reqx-form-field">
+                    <span>Requirement Date</span>
+                    <input
+                      type="date"
+                      value={form.requirementDate}
+                      onChange={(e) => setField('requirementDate', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Client</span>
                     <select value={form.clientId} onChange={(e) => setField('clientId', e.target.value)}>
-                      <option value="">Select client…</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
+                      <option value="">Select client...</option>
+                      {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Role / Skill</span>
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Role / Skill</span>
                     <input value={form.roleSkill} onChange={(e) => setField('roleSkill', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Job Family</span>
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Job Family</span>
                     <select value={form.jobFamilyId} onChange={(e) => setField('jobFamilyId', e.target.value)}>
-                      <option value="">Select job family…</option>
-                      {jobFamilies.map((jf) => (
-                        <option key={jf.id} value={jf.id}>{jf.name}</option>
-                      ))}
+                      <option value="">Select job family...</option>
+                      {jobFamilies.map((jf) => <option key={jf.id} value={jf.id}>{jf.name}</option>)}
                     </select>
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Positions</span>
-                    <input type="number" min="0" value={form.numberOfPositions} onChange={(e) => setField('numberOfPositions', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Sales Owner</span>
-                    {canReassignSalesOwner ? (
-                      <select value={form.salesOwnerId} onChange={(e) => setField('salesOwnerId', e.target.value)}>
-                        <option value="">Select sales owner…</option>
-                        {salesOwners.map((o) => (
-                          <option key={o.id} value={o.id}>{o.name}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <select value={form.salesOwnerId} disabled>
-                        <option value="">Select sales owner…</option>
-                        {salesOwners.map((o) => (
-                          <option key={o.id} value={o.id}>{o.name}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Priority</span>
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Positions</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.numberOfPositions}
+                      onChange={(e) => setField('numberOfPositions', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Sales Owner</span>
+                    <select
+                      value={form.salesOwnerId}
+                      disabled={!canReassignSalesOwner}
+                      onChange={(e) => setField('salesOwnerId', e.target.value)}
+                    >
+                      <option value="">Select sales owner...</option>
+                      {salesOwners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </select>
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Priority</span>
                     <select value={form.priorityCode} onChange={(e) => setField('priorityCode', e.target.value)}>
                       {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
-                  </div>
-                  <div className="detail-field full">
-                    <span className="detail-label">TA assignment</span>
+                  </label>
+
+                  <div className="reqx-form-field reqx-form-field--full">
+                    <span>TA assignment</span>
+
                     {canAssignTas ? (
                       <>
-                        <div className="assign-mode-row mb-sm">
-                          <label className={`assign-mode-opt${assignMode === 'none' ? ' is-active' : ''}`}>
+                        <div className="reqx-assign-options">
+                          <label className={assignMode === 'none' ? 'reqx-assign-option is-active' : 'reqx-assign-option'}>
                             <input
                               type="radio"
                               name="editAssignMode"
@@ -1071,9 +1184,10 @@ export default function YourRequirementsScreen() {
                                 setField('taLeadIds', []);
                               }}
                             />
-                            Unassigned
+                            <span>Unassigned</span>
                           </label>
-                          <label className={`assign-mode-opt${assignMode === 'lead' ? ' is-active' : ''}`}>
+
+                          <label className={assignMode === 'lead' ? 'reqx-assign-option is-active' : 'reqx-assign-option'}>
                             <input
                               type="radio"
                               name="editAssignMode"
@@ -1081,14 +1195,13 @@ export default function YourRequirementsScreen() {
                               onChange={() => {
                                 setAssignMode('lead');
                                 setField('taOwnerIds', []);
-                                if (taLeadOptions.length === 0) {
-                                  void loadTaLeadOptions();
-                                }
+                                if (taLeadOptions.length === 0) void loadTaLeadOptions();
                               }}
                             />
-                            Via TA Lead
+                            <span>Via TA Lead</span>
                           </label>
-                          <label className={`assign-mode-opt${assignMode === 'owners' ? ' is-active' : ''}`}>
+
+                          <label className={assignMode === 'owners' ? 'reqx-assign-option is-active' : 'reqx-assign-option'}>
                             <input
                               type="radio"
                               name="editAssignMode"
@@ -1098,9 +1211,10 @@ export default function YourRequirementsScreen() {
                                 setField('taLeadIds', []);
                               }}
                             />
-                            Direct TA Owner(s)
+                            <span>Direct TA Owner(s)</span>
                           </label>
                         </div>
+
                         {assignMode === 'lead' && (
                           <>
                             <TaOwnersMultiSelect
@@ -1108,7 +1222,7 @@ export default function YourRequirementsScreen() {
                               value={form.taLeadIds || []}
                               onChange={(ids) => setField('taLeadIds', ids)}
                               idPrefix="edit-ta-lead"
-                              placeholder="Select TA Lead(s)…"
+                              placeholder="Select TA Lead(s)..."
                               emptyMessage={
                                 taLeadLoadError
                                   ? taLeadLoadError
@@ -1117,19 +1231,16 @@ export default function YourRequirementsScreen() {
                               ariaLabel="TA Leads"
                             />
                             {taLeadLoadError && (
-                              <div className="add-error mt-sm inline-actions">
+                              <div className="reqx-inline-error">
                                 {taLeadLoadError}
-                                <button
-                                  type="button"
-                                  className="filter-clear"
-                                  onClick={() => void loadTaLeadOptions()}
-                                >
+                                <button type="button" onClick={() => void loadTaLeadOptions()}>
                                   Retry
                                 </button>
                               </div>
                             )}
                           </>
                         )}
+
                         {assignMode === 'owners' && (
                           <TaOwnersMultiSelect
                             options={taOwnerOptions}
@@ -1152,47 +1263,87 @@ export default function YourRequirementsScreen() {
                       />
                     )}
                   </div>
-                  <div className="detail-field">
-                    <span className="detail-label">TA Handoff Date *</span>
-                    <input type="date" required value={form.taHandoffDate} onChange={(e) => setField('taHandoffDate', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Target Closure Date *</span>
-                    <input type="date" required value={form.targetClosureDate} onChange={(e) => setField('targetClosureDate', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Experience</span>
+
+                  <label className="reqx-form-field">
+                    <span>TA Handoff Date</span>
+                    <input
+                      type="date"
+                      value={form.taHandoffDate}
+                      onChange={(e) => setField('taHandoffDate', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Target Closure Date</span>
+                    <input
+                      type="date"
+                      value={form.targetClosureDate}
+                      onChange={(e) => setField('targetClosureDate', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Experience</span>
                     <input value={form.experience} onChange={(e) => setField('experience', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Job Location</span>
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Job Location</span>
                     <input value={form.jobLocation} onChange={(e) => setField('jobLocation', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Min Budget</span>
-                    <input type="number" min="0" value={form.minBudget} onChange={(e) => setField('minBudget', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Max Budget</span>
-                    <input type="number" min="0" value={form.maxBudget} onChange={(e) => setField('maxBudget', e.target.value)} />
-                  </div>
-                  <div className="detail-field">
-                    <span className="detail-label">Duration (Months)</span>
-                    <input type="number" min="0" value={form.durationMonths} onChange={(e) => setField('durationMonths', e.target.value)} />
-                  </div>
-                  <div className="detail-field full">
-                    <span className="detail-label">Job Description</span>
-                    <textarea value={form.remarks} onChange={(e) => setField('remarks', e.target.value)} />
-                  </div>
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Min Budget</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.minBudget}
+                      onChange={(e) => setField('minBudget', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Max Budget</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.maxBudget}
+                      onChange={(e) => setField('maxBudget', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field">
+                    <span>Duration (Months)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.durationMonths}
+                      onChange={(e) => setField('durationMonths', e.target.value)}
+                    />
+                  </label>
+
+                  <label className="reqx-form-field reqx-form-field--full">
+                    <span>Job Description</span>
+                    <textarea
+                      rows={4}
+                      value={form.remarks}
+                      onChange={(e) => setField('remarks', e.target.value)}
+                    />
+                  </label>
                 </div>
-                {editError && <div className="add-error">{editError}</div>}
-                {editSuccess && <div className="add-success">{editSuccess}</div>}
+
+                {editError && <div className="reqx-alert reqx-alert--error">{editError}</div>}
+                {editSuccess && <div className="reqx-alert reqx-alert--success">{editSuccess}</div>}
+
                 {editing?.id && <RequirementNotes requirementId={editing.id} />}
               </div>
-              <div className="modal-foot">
-                <button type="button" className="add-reset" onClick={closeEdit}>Cancel</button>
-                <button type="submit" className="hr-detail-save" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save Changes'}
+
+              <div className="reqx-modal-footer">
+                <button type="button" className="reqx-button reqx-button--secondary" onClick={closeEdit}>
+                  Cancel
+                </button>
+                <button type="submit" className="reqx-button reqx-button--primary" disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

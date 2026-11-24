@@ -1,7 +1,14 @@
+
 import { useEffect, useState } from 'react';
 import { get, patch, del } from '../../services/apiClient';
 import { ENDPOINTS } from '../../config/api';
-import { IconCheckCircle, IconFilePlus, IconEdit, IconFilter, IconX, IconTrash } from '../../components/Icons';
+import {
+  IconCheckCircle,
+  IconFilePlus,
+  IconEdit,
+  IconFilter,
+  IconX,
+} from '../../components/Icons';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { formatDate, toDateInput } from '../../utils/formatDate';
 import { matchesQuery, useDebouncedValue } from '../../utils/listSearch';
@@ -9,9 +16,16 @@ import TableSearch from '../../components/TableSearch';
 import { EmptyState, ScreenSkeleton } from '../../components/ui';
 import DownloadExcelButton from '../../components/DownloadExcelButton';
 import { useToast } from '../../context/ToastContext';
-import { useAuth } from '../../context/AuthContext';
+import './../pageCss/OffersScreen.css';
 
-const HR_OFFER_STATUS_CODES = ['RELEASED', 'ACCEPTED', 'DECLINED', 'HOLD', 'BACKOUT'];
+const HR_OFFER_STATUS_CODES = [
+  'RELEASED',
+  'ACCEPTED',
+  'DECLINED',
+  'HOLD',
+  'BACKOUT',
+];
+
 const FALLBACK_OFFER_STATUSES = [
   { code: 'INITIATED', label: 'Initiated' },
   { code: 'RELEASED', label: 'Released' },
@@ -44,6 +58,7 @@ function statusLabel(code, options) {
 
 function offerRow(o, statusOptions) {
   const status = o.offerStatus || o.statusCode || '';
+
   return {
     id: o.id,
     publicId: o.publicId || o.id || '—',
@@ -63,22 +78,39 @@ function offerRow(o, statusOptions) {
     expectedDoj: formatDate(o.expectedDoj),
     remarks: o.remarks || '—',
     salesOwner: o.salesOwnerName || o.salesOwner?.fullName || '—',
-    taOwners: o.taOwnerNames
-      || (Array.isArray(o.taOwners) ? o.taOwners.map((t) => t.fullName || t).filter(Boolean).join(', ') : '')
-      || '—',
+    taOwners:
+      o.taOwnerNames ||
+      (Array.isArray(o.taOwners)
+        ? o.taOwners.map((t) => t.fullName || t).filter(Boolean).join(', ')
+        : '') ||
+      '—',
   };
+}
+
+function getOfferStatusClass(status) {
+  const normalized = String(status || 'initiated').toLowerCase();
+
+  if (normalized === 'accepted') return 'ofx-status--accepted';
+  if (normalized === 'released') return 'ofx-status--released';
+  if (normalized === 'declined' || normalized === 'backout') {
+    return 'ofx-status--declined';
+  }
+  if (normalized === 'hold') return 'ofx-status--hold';
+
+  return 'ofx-status--initiated';
 }
 
 export default function OffersScreen() {
   const { toast } = useToast();
-  const { user } = useAuth();
-  const canDelete = user?.userType === 'admin';
+
   const [offers, setOffers] = useState([]);
   const [statusOptions, setStatusOptions] = useState(FALLBACK_OFFER_STATUSES);
   const [loading, setLoading] = useState(true);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [candidateLabel, setCandidateLabel] = useState('');
+
   const [form, setForm] = useState({
     statusCode: 'INITIATED',
     offerInitiatedDate: '',
@@ -87,16 +119,20 @@ export default function OffersScreen() {
     expectedDoj: '',
     remarks: '',
   });
+
   const [saving, setSaving] = useState(false);
   const [loadingOffer, setLoadingOffer] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
   const [listSearch, setListSearch] = useState('');
   const listSearchQ = useDebouncedValue(listSearch);
   const [statusFilter, setStatusFilter] = useState('');
 
-  useEscapeKey(modalOpen, () => { if (!saving) setModalOpen(false); });
+  useEscapeKey(modalOpen, () => {
+    if (!saving) setModalOpen(false);
+  });
 
   const loadOffers = async () => {
     const res = await get(ENDPOINTS.OFFERS);
@@ -105,55 +141,83 @@ export default function OffersScreen() {
 
   useEffect(() => {
     let active = true;
+
     setLoading(true);
+
     Promise.all([
       get(ENDPOINTS.OFFERS),
       get(`${ENDPOINTS.LOOKUPS}/OFFER_STATUS`).catch(() => null),
     ])
       .then(([offersRes, lookupRes]) => {
         if (!active) return;
+
         setOffers(normalizeOffers(offersRes));
+
         const lookups = normalizeLookups(lookupRes)
           .map((v) => ({
             code: String(v.code || '').toUpperCase(),
             label: v.label || v.code,
           }))
           .filter((v) => v.code);
+
         if (lookups.length) {
-          const allowed = new Set(['INITIATED', ...HR_OFFER_STATUS_CODES]);
+          const allowed = new Set([
+            'INITIATED',
+            ...HR_OFFER_STATUS_CODES,
+          ]);
+
           const filtered = lookups.filter((v) => allowed.has(v.code));
-          setStatusOptions(filtered.length ? filtered : FALLBACK_OFFER_STATUSES);
+
+          setStatusOptions(
+            filtered.length ? filtered : FALLBACK_OFFER_STATUSES,
+          );
         }
       })
       .catch(() => active && setOffers([]))
       .finally(() => active && setLoading(false));
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const selectOptions = (() => {
     const codes = new Set(statusOptions.map((o) => o.code));
-    // Always allow INITIATED for display when current offer is still initiated.
+
     if (!codes.has('INITIATED')) {
-      return [{ code: 'INITIATED', label: 'Initiated' }, ...statusOptions];
+      return [
+        { code: 'INITIATED', label: 'Initiated' },
+        ...statusOptions,
+      ];
     }
+
     return statusOptions;
   })();
 
   const openUpdate = async (offer) => {
     const id = offer.id;
     if (!id) return;
+
     setEditingId(id);
+
     setCandidateLabel(
-      [offer.candidatePublicId || offer.candidate?.publicId, offer.candidateName || offer.candidate?.name]
-        .filter(Boolean).join(' — ')
+      [
+        offer.candidatePublicId || offer.candidate?.publicId,
+        offer.candidateName || offer.candidate?.name,
+      ]
+        .filter(Boolean)
+        .join(' — '),
     );
+
     setError(null);
     setSuccess(null);
     setModalOpen(true);
     setLoadingOffer(true);
+
     try {
       const res = await get(`${ENDPOINTS.OFFERS}/${id}`);
       const data = res?.offer || res?.data || res;
+
       setForm({
         statusCode: data.offerStatus || data.statusCode || 'INITIATED',
         offerInitiatedDate: toDateInput(data.offerInitiatedDate),
@@ -162,9 +226,14 @@ export default function OffersScreen() {
         expectedDoj: toDateInput(data.expectedDoj),
         remarks: data.remarks || '',
       });
+
       setCandidateLabel(
-        [data.candidatePublicId || data.candidate?.publicId, data.candidateName || data.candidate?.name]
-          .filter(Boolean).join(' — ') || candidateLabel
+        [
+          data.candidatePublicId || data.candidate?.publicId,
+          data.candidateName || data.candidate?.name,
+        ]
+          .filter(Boolean)
+          .join(' — ') || candidateLabel,
       );
     } catch {
       setForm({
@@ -203,9 +272,11 @@ export default function OffersScreen() {
 
   const saveOffer = async () => {
     if (!editingId) return;
+
     setSaving(true);
     setError(null);
     setSuccess(null);
+
     try {
       const payload = {
         statusCode: form.statusCode || 'INITIATED',
@@ -215,21 +286,30 @@ export default function OffersScreen() {
         expectedDoj: form.expectedDoj || null,
         remarks: form.remarks || '',
       };
-      const res = await patch(`${ENDPOINTS.OFFERS}/${editingId}`, payload);
+
+      const res = await patch(
+        `${ENDPOINTS.OFFERS}/${editingId}`,
+        payload,
+      );
+
       const nextStatus = String(form.statusCode || '').toUpperCase();
+
       const okMsg =
         nextStatus === 'ACCEPTED'
-          ? (res?.message || 'Offer accepted — candidate moved to Onboarding')
-          : (res?.message || 'Offer updated successfully');
+          ? res?.message || 'Offer accepted — candidate moved to Onboarding'
+          : res?.message || 'Offer updated successfully';
+
       setSuccess(okMsg);
       toast(okMsg);
       setModalOpen(false);
+
       await loadOffers();
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
         err?.message ||
         'Failed to update offer.';
+
       setError(Array.isArray(msg) ? msg.join(', ') : String(msg));
     } finally {
       setSaving(false);
@@ -239,16 +319,32 @@ export default function OffersScreen() {
   if (loading) return <ScreenSkeleton rows={8} />;
 
   const visibleOffers = offers.filter(
-    (o) => String(o.offerStatus || o.statusCode || '').toUpperCase() !== 'ACCEPTED',
+    (o) =>
+      String(o.offerStatus || o.statusCode || '').toUpperCase() !==
+      'ACCEPTED',
   );
-  const statusChoices = [...new Set(
-    visibleOffers.map((o) => String(o.offerStatus || o.statusCode || '').toUpperCase()).filter(Boolean),
-  )];
+
+  const statusChoices = [
+    ...new Set(
+      visibleOffers
+        .map((o) =>
+          String(o.offerStatus || o.statusCode || '').toUpperCase(),
+        )
+        .filter(Boolean),
+    ),
+  ];
+
   const statusFiltered = statusFilter
-    ? visibleOffers.filter((o) => String(o.offerStatus || o.statusCode || '').toUpperCase() === statusFilter)
+    ? visibleOffers.filter(
+        (o) =>
+          String(o.offerStatus || o.statusCode || '').toUpperCase() ===
+          statusFilter,
+      )
     : visibleOffers;
+
   const displayedOffers = statusFiltered.filter((o) => {
     const row = offerRow(o, selectOptions);
+
     return matchesQuery(
       listSearchQ,
       row.publicId,
@@ -260,256 +356,451 @@ export default function OffersScreen() {
       row.client,
     );
   });
+
   const hasFilters = Boolean(statusFilter || listSearch.trim());
+
   const clearFilters = () => {
     setStatusFilter('');
     setListSearch('');
   };
 
+  const exportColumns = [
+    { label: 'Offer ID', key: 'publicId' },
+    { label: 'Candidate ID', key: 'candidatePublicId' },
+    { label: 'Candidate Name', key: 'candidateName' },
+    { label: 'TA Owners', key: 'taOwners' },
+    { label: 'Sales Owner', key: 'salesOwner' },
+    { label: 'Position', key: 'position' },
+    { label: 'Client', key: 'client' },
+    { label: 'Email', key: 'email' },
+    { label: 'Mobile', key: 'mobile' },
+    { label: 'Offer Status', key: 'statusLabel' },
+    { label: 'CTC Rate', key: 'ctcRate' },
+    { label: 'Selected', key: 'selectedDate' },
+    { label: 'Initiated', key: 'offerInitiatedDate' },
+    { label: 'Released', key: 'offerReleasedDate' },
+    { label: 'Expected DOJ', key: 'expectedDoj' },
+  ];
+
   return (
-    <div className="hr-candidates hr-offers">
-      <div className="assign-head">
-        <span className="assign-badge"><IconCheckCircle /></span>
-        <div>
-          <h2 className="assign-title">Offers</h2>
-          <p className="assign-sub">View and update candidate offers (Accepted offers move to Onboarding).</p>
+    <div className="ofx-screen">
+      {/* Page heading */}
+      <div className="ofx-page-header">
+        <div className="ofx-heading-main">
+          <span className="ofx-heading-icon">
+            <IconCheckCircle />
+          </span>
+
+          <div className="ofx-heading-copy">
+            <div className="ofx-eyebrow">RECRUITMENT MANAGEMENT</div>
+            <h2 className="ofx-page-title">Offers</h2>
+            <p className="ofx-page-description">
+              Track candidate offers and manage offer progress.
+              Accepted candidates move to Onboarding.
+            </p>
+          </div>
         </div>
-        {visibleOffers.length > 0 && <span className="yr-count">{displayedOffers.length} shown</span>}
+
+        <div className="ofx-header-actions">
+          <div className="ofx-record-count">
+            <span className="ofx-count-value">
+              {displayedOffers.length}
+            </span>
+            <span className="ofx-count-label">Showing</span>
+          </div>
+
+          <div className="ofx-export-button">
+            <DownloadExcelButton
+              filename="offers"
+              rows={displayedOffers.map((offer) =>
+                offerRow(offer, selectOptions),
+              )}
+              columns={exportColumns}
+            />
+          </div>
+        </div>
       </div>
 
-      {error && !modalOpen && <div className="add-error">{error}</div>}
-      {success && <div className="add-success">{success}</div>}
+      {/* Feedback */}
+      {error && !modalOpen && (
+        <div className="ofx-alert ofx-alert--error">
+          {error}
+        </div>
+      )}
 
+      {success && (
+        <div className="ofx-alert ofx-alert--success">
+          {success}
+        </div>
+      )}
+
+      {/* Filters */}
       {visibleOffers.length > 0 && (
-        <div className="filter-bar">
-          <div className="filter-bar-head">
-            <IconFilter />
-            <span>Filters</span>
-            {hasFilters && (
-              <span className="filter-count">
-                {(statusFilter ? 1 : 0) + (listSearch.trim() ? 1 : 0)} active
+        <section className="ofx-filter-card">
+          <div className="ofx-filter-header">
+            <div className="ofx-filter-heading">
+              <span className="ofx-filter-icon">
+                <IconFilter />
               </span>
-            )}
+              <span className="ofx-filter-title">Filters</span>
+
+              {hasFilters && (
+                <span className="ofx-active-count">
+                  {(statusFilter ? 1 : 0) +
+                    (listSearch.trim() ? 1 : 0)}{' '}
+                  active
+                </span>
+              )}
+            </div>
+
             {hasFilters && (
-              <button type="button" className="filter-clear" onClick={clearFilters}>Clear</button>
+              <button
+                type="button"
+                className="ofx-clear-button"
+                onClick={clearFilters}
+              >
+                <IconX />
+                <span>Clear filters</span>
+              </button>
             )}
           </div>
+
+          <div className="ofx-filter-controls">
+            <label className="ofx-filter-field">
+              <span className="ofx-field-caption">Offer status</span>
+              <select
+                className="ofx-control"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">All statuses</option>
+                {statusChoices.map((code) => (
+                  <option key={code} value={code}>
+                    {statusLabel(code, selectOptions)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="ofx-search-field">
+              <span className="ofx-field-caption">Search records</span>
+              <TableSearch
+                value={listSearch}
+                onChange={setListSearch}
+                placeholder="Search offers, candidates, IDs..."
+              />
+            </div>
+          </div>
+
           {hasFilters && (
-            <div className="filter-chips" aria-label="Active filters">
+            <div className="ofx-active-filters">
               {statusFilter && (
-                <button type="button" className="filter-chip" onClick={() => setStatusFilter('')}>
-                  Status: {statusLabel(statusFilter, selectOptions)}
-                  <IconX width={12} height={12} />
+                <button
+                  type="button"
+                  className="ofx-filter-chip"
+                  onClick={() => setStatusFilter('')}
+                >
+                  <span>
+                    Status: {statusLabel(statusFilter, selectOptions)}
+                  </span>
+                  <IconX />
                 </button>
               )}
+
               {listSearch.trim() && (
-                <button type="button" className="filter-chip" onClick={() => setListSearch('')}>
-                  Search: {listSearch.trim()}
-                  <IconX width={12} height={12} />
+                <button
+                  type="button"
+                  className="ofx-filter-chip"
+                  onClick={() => setListSearch('')}
+                >
+                  <span>Search: {listSearch.trim()}</span>
+                  <IconX />
                 </button>
               )}
             </div>
           )}
-          <div className="filter-fields">
-            <div className="filter-field">
-              <span className="filter-label">Status</span>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">All</option>
-                {statusChoices.map((code) => (
-                  <option key={code} value={code}>{statusLabel(code, selectOptions)}</option>
-                ))}
-              </select>
+        </section>
+      )}
+
+      {/* Results */}
+      <section className="ofx-results-card">
+        <div className="ofx-results-header">
+          <div>
+            <h3 className="ofx-section-title">Offer records</h3>
+            <p className="ofx-section-description">
+              {visibleOffers.length === 0
+                ? 'Candidate offer records will appear here.'
+                : 'Review offer details and update candidate offer status.'}
+            </p>
+          </div>
+
+          <span className="ofx-results-total">
+            {displayedOffers.length} records
+          </span>
+        </div>
+
+        {visibleOffers.length === 0 ? (
+          <div className="ofx-empty-state">
+            <EmptyState
+              icon={IconCheckCircle}
+              title="No offers found"
+              description="Accepted offers move to Onboarding. New offers will appear here."
+            />
+          </div>
+        ) : displayedOffers.length === 0 ? (
+          <div className="ofx-empty-state">
+            <EmptyState
+              icon={IconCheckCircle}
+              title="No matching offers"
+              description="Try changing your search or filters."
+            />
+          </div>
+        ) : (
+          <div className="ofx-table-viewport">
+            <div className="ofx-table-scroll">
+              <table className="ofx-table">
+                <thead>
+                  <tr>
+                    <th>Offer ID</th>
+                    <th>Candidate ID</th>
+                    <th>Candidate Name</th>
+                    <th>TA Owners</th>
+                    <th>Sales Owner</th>
+                    <th>Position</th>
+                    <th>Client</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Offer Status</th>
+                    <th>CTC Rate</th>
+                    <th>Selected</th>
+                    <th>Initiated</th>
+                    <th>Released</th>
+                    <th>Expected DOJ</th>
+                    <th className="ofx-action-heading">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {displayedOffers.map((o) => {
+                    const row = offerRow(o, selectOptions);
+
+                    return (
+                      <tr key={row.id || row.publicId}>
+                        <td>
+                          <span className="ofx-primary-cell">
+                            {row.publicId}
+                          </span>
+                        </td>
+                        <td>{row.candidatePublicId}</td>
+                        <td>
+                          <span className="ofx-candidate-name">
+                            {row.candidateName}
+                          </span>
+                        </td>
+                        <td>{row.taOwners}</td>
+                        <td>{row.salesOwner}</td>
+                        <td>{row.position}</td>
+                        <td>{row.client}</td>
+                        <td className="ofx-contact-cell">{row.email}</td>
+                        <td>{row.mobile}</td>
+                        <td>
+                          <span
+                            className={`ofx-status ${getOfferStatusClass(
+                              row.status,
+                            )}`}
+                          >
+                            <span className="ofx-status-dot" />
+                            {row.statusLabel}
+                          </span>
+                        </td>
+                        <td>{row.ctcRate}</td>
+                        <td>{row.selectedDate}</td>
+                        <td>{row.offerInitiatedDate}</td>
+                        <td>{row.offerReleasedDate}</td>
+                        <td>{row.expectedDoj}</td>
+                        <td className="ofx-action-cell">
+                          <button
+                            type="button"
+                            className="ofx-update-button"
+                            onClick={() => openUpdate(o)}
+                            title="Update offer details"
+                          >
+                            <IconEdit />
+                            <span>Update</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-          <TableSearch
-            value={listSearch}
-            onChange={setListSearch}
-            placeholder="Search offers, candidates, IDs…"
-          />
-        </div>
-      )}
+        )}
+      </section>
 
-      <DownloadExcelButton
-        filename="offers"
-        rows={displayedOffers.map((offer) => offerRow(offer, selectOptions))}
-        columns={[
-          { label: 'Offer ID', key: 'publicId' },
-          { label: 'Candidate ID', key: 'candidatePublicId' },
-          { label: 'Candidate Name', key: 'candidateName' },
-          { label: 'TA Owners', key: 'taOwners' },
-          { label: 'Sales Owner', key: 'salesOwner' },
-          { label: 'Position', key: 'position' },
-          { label: 'Client', key: 'client' },
-          { label: 'Email', key: 'email' },
-          { label: 'Mobile', key: 'mobile' },
-          { label: 'Offer Status', key: 'statusLabel' },
-          { label: 'CTC Rate', key: 'ctcRate' },
-          { label: 'Selected', key: 'selectedDate' },
-          { label: 'Initiated', key: 'offerInitiatedDate' },
-          { label: 'Released', key: 'offerReleasedDate' },
-          { label: 'Expected DOJ', key: 'expectedDoj' },
-        ]}
-      />
-
-      {visibleOffers.length === 0 ? (
-        <EmptyState
-          icon={IconCheckCircle}
-          title="No offers found"
-          description="Accepted offers move to Onboarding. New offers will appear here."
-        />
-      ) : displayedOffers.length === 0 ? (
-        <EmptyState
-          icon={IconCheckCircle}
-          title="No matching offers"
-          description="Try a different search."
-        />
-      ) : (
-      <div className="cand-table-wrap">
-        <table className="cand-table hr-table">
-          <thead>
-            <tr>
-              <th>Offer ID</th>
-              <th>Candidate ID</th>
-              <th>Candidate Name</th>
-              <th>TA Owners</th>
-              <th>Sales Owner</th>
-              <th>Position</th>
-              <th>Client</th>
-              <th>Email</th>
-              <th>Mobile</th>
-              <th>Offer Status</th>
-              <th>CTC Rate</th>
-              <th>Selected</th>
-              <th>Initiated</th>
-              <th>Released</th>
-              <th>Expected DOJ</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayedOffers.map((o) => {
-              const row = offerRow(o, selectOptions);
-              return (
-                <tr key={row.id || row.publicId}>
-                  <td>{row.publicId}</td>
-                  <td>{row.candidatePublicId}</td>
-                  <td>{row.candidateName}</td>
-                  <td>{row.taOwners}</td>
-                  <td>{row.salesOwner}</td>
-                  <td>{row.position}</td>
-                  <td>{row.client}</td>
-                  <td>{row.email}</td>
-                  <td>{row.mobile}</td>
-                  <td>
-                    <span className={`hr-pill hr-pill-status ${(row.status || '').toLowerCase()}`}>
-                      {row.statusLabel}
-                    </span>
-                  </td>
-                  <td>{row.ctcRate}</td>
-                  <td>{row.selectedDate}</td>
-                  <td>{row.offerInitiatedDate}</td>
-                  <td>{row.offerReleasedDate}</td>
-                  <td>{row.expectedDoj}</td>
-                  <td>
-                    <div className="hr-row-actions">
-                      <button className="hr-detail-btn" onClick={() => openUpdate(o)} title="Update details">
-                        <IconEdit />
-                        <span>Update</span>
-                      </button>
-                      {canDelete && row.candidateId && (
-                        <button
-                          className="hr-detail-btn users-delete-btn"
-                          onClick={() => deleteCandidate(o)}
-                          disabled={deletingId === row.candidateId}
-                          title="Delete candidate"
-                        >
-                          <IconTrash />
-                          <span>{deletingId === row.candidateId ? 'Deleting…' : 'Delete'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      )}
-
+      {/* Update modal */}
       {modalOpen && (
-        <div className="modal-overlay" onClick={() => !saving && setModalOpen(false)}>
-          <div className="modal-card detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <h3>Update Offer Details{candidateLabel ? ` — ${candidateLabel}` : ''}</h3>
-              <button className="modal-close" onClick={() => setModalOpen(false)} title="Close">×</button>
+        <div
+          className="ofx-modal-overlay"
+          onClick={() => !saving && setModalOpen(false)}
+        >
+          <div
+            className="ofx-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ofx-modal-header">
+              <div className="ofx-modal-heading">
+                <span className="ofx-modal-eyebrow">
+                  OFFER MANAGEMENT
+                </span>
+                <h3>Update offer details</h3>
+                <p>{candidateLabel || 'Update candidate offer information'}</p>
+              </div>
+
+              <button
+                type="button"
+                className="ofx-modal-close"
+                onClick={() => !saving && setModalOpen(false)}
+                title="Close"
+                disabled={saving}
+              >
+                <IconX />
+              </button>
             </div>
-            <div className="modal-body">
-              {error && <div className="add-error">{error}</div>}
+
+            <div className="ofx-modal-body">
+              {error && (
+                <div className="ofx-alert ofx-alert--error">
+                  {error}
+                </div>
+              )}
+
               {loadingOffer ? (
-                <div className="screen-loading"><div className="spinner" /></div>
+                <div className="ofx-loading">
+                  <span className="ofx-spinner" />
+                  <span>Loading offer details...</span>
+                </div>
               ) : (
-                <div className="detail-grid">
-                  <label className="detail-field">
-                    <span className="detail-label">Offer Status</span>
+                <div className="ofx-form-grid">
+                  <label className="ofx-form-field">
+                    <span>Offer status</span>
                     <select
+                      className="ofx-control"
                       value={form.statusCode || 'INITIATED'}
-                      onChange={(e) => setForm((p) => ({ ...p, statusCode: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          statusCode: e.target.value,
+                        }))
+                      }
                     >
                       {selectOptions.map((o) => (
-                        <option key={o.code} value={o.code}>{o.label}</option>
+                        <option key={o.code} value={o.code}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
                   </label>
-                  <label className="detail-field">
-                    <span className="detail-label">Offer Initiated Date</span>
+
+                  <label className="ofx-form-field">
+                    <span>Offer initiated date</span>
                     <input
+                      className="ofx-control"
                       type="date"
                       value={form.offerInitiatedDate || ''}
-                      onChange={(e) => setForm((p) => ({ ...p, offerInitiatedDate: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          offerInitiatedDate: e.target.value,
+                        }))
+                      }
                     />
                   </label>
-                  <label className="detail-field">
-                    <span className="detail-label">Offer Released Date</span>
+
+                  <label className="ofx-form-field">
+                    <span>Offer released date</span>
                     <input
+                      className="ofx-control"
                       type="date"
                       value={form.offerReleasedDate || ''}
-                      onChange={(e) => setForm((p) => ({ ...p, offerReleasedDate: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          offerReleasedDate: e.target.value,
+                        }))
+                      }
                     />
                   </label>
-                  <label className="detail-field">
-                    <span className="detail-label">CTC Rate</span>
+
+                  <label className="ofx-form-field">
+                    <span>CTC rate</span>
                     <input
+                      className="ofx-control"
                       type="text"
                       placeholder="e.g. 18 LPA"
                       value={form.ctcRate || ''}
-                      onChange={(e) => setForm((p) => ({ ...p, ctcRate: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          ctcRate: e.target.value,
+                        }))
+                      }
                     />
                   </label>
-                  <label className="detail-field">
-                    <span className="detail-label">Expected DOJ</span>
+
+                  <label className="ofx-form-field">
+                    <span>Expected DOJ</span>
                     <input
+                      className="ofx-control"
                       type="date"
                       value={form.expectedDoj || ''}
-                      onChange={(e) => setForm((p) => ({ ...p, expectedDoj: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          expectedDoj: e.target.value,
+                        }))
+                      }
                     />
                   </label>
-                  <label className="detail-field full">
-                    <span className="detail-label">Remarks</span>
+
+                  <label className="ofx-form-field ofx-form-field--wide">
+                    <span>Remarks</span>
                     <textarea
+                      className="ofx-control ofx-textarea"
                       rows={3}
+                      placeholder="Add any relevant offer remarks..."
                       value={form.remarks || ''}
-                      onChange={(e) => setForm((p) => ({ ...p, remarks: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          remarks: e.target.value,
+                        }))
+                      }
                     />
                   </label>
                 </div>
               )}
             </div>
-            <div className="modal-foot">
-              <button className="filter-clear" onClick={() => setModalOpen(false)} disabled={saving}>Cancel</button>
-              <button className="hr-detail-save" onClick={saveOffer} disabled={saving || loadingOffer}>
+
+            <div className="ofx-modal-footer">
+              <button
+                type="button"
+                className="ofx-button ofx-button--secondary"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="ofx-button ofx-button--primary"
+                onClick={saveOffer}
+                disabled={saving || loadingOffer}
+              >
                 <IconFilePlus />
-                <span>{saving ? 'Saving…' : 'Update Details'}</span>
+                <span>{saving ? 'Saving...' : 'Update details'}</span>
               </button>
             </div>
           </div>

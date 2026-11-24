@@ -328,15 +328,21 @@ export default function OffersScreen() {
       'ACCEPTED',
   );
 
+  // const statusChoices = [
+  //   ...new Set(
+  //     visibleOffers
+  //       .map((o) =>
+  //         String(o.offerStatus || o.statusCode || '').toUpperCase(),
+  //       )
+  //       .filter(Boolean),
+  //   ),
+  // ];
   const statusChoices = [
-    ...new Set(
-      visibleOffers
-        .map((o) =>
-          String(o.offerStatus || o.statusCode || '').toUpperCase(),
-        )
-        .filter(Boolean),
-    ),
-  ];
+  ...new Set([
+    'INITIATED',
+    ...HR_OFFER_STATUS_CODES,
+  ]),
+];
 
   const statusFiltered = statusFilter
     ? visibleOffers.filter(

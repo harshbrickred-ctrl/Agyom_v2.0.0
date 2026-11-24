@@ -14,11 +14,11 @@
   --obx-border: #e6e9ee;
   --obx-border-strong: #d9dee6;
   --obx-accent: #e05252;
+  --obx-accent-hover: #e05252;
   --obx-accent-soft: #f9eeee;
   --obx-danger: #c13c45;
   --obx-danger-bg: #fff0f0;
   --obx-shadow: 0 2px 8px rgba(25, 35, 50, 0.035);
-    --obx-accent-hover:#e05252;
 
   width: 100%;
   min-width: 0;
@@ -68,21 +68,20 @@
 }
 
 .obx-header-icon {
-   width: 38px;
-    height: 38px;
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-    border-radius: 9px;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
   color: var(--obx-card);
   background: var(--obx-accent);
 }
 
 .obx-header-icon svg {
-   width: 23px;
+  width: 23px;
   height: 23px;
 }
-
 
 .obx-heading-copy {
   min-width: 0;
@@ -298,6 +297,7 @@
   font-size: 13px;
   padding: 6px 8px;
 }
+
 .obx-toolbar-title {
   color: var(--obx-text);
   font-size: 13px;
@@ -370,8 +370,10 @@
   box-shadow: var(--obx-shadow);
 }
 
+/* Horizontal and vertical scrolling */
+
 .obx-table-scroll {
-  width: 1188px;
+  width: 100%;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: auto;
@@ -380,8 +382,12 @@
 }
 
 .obx-table-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
+}
+
+.obx-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .obx-table-scroll::-webkit-scrollbar-thumb {
@@ -389,8 +395,14 @@
   background: var(--obx-border-strong);
 }
 
+.obx-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--obx-muted);
+}
+
+/* Table dimensions */
+
 .obx-table {
-  width: 100%;
+  width: max-content;
   min-width: 1800px;
   border-collapse: separate;
   border-spacing: 0;
@@ -399,10 +411,12 @@
   text-align: left;
 }
 
+/* Sticky header */
+
 .obx-table thead {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 4;
 }
 
 .obx-table th {
@@ -440,6 +454,58 @@
 .obx-table tbody tr:hover {
   background: var(--obx-card-soft);
 }
+
+/* ==========================================
+   FIXED ACTIONS COLUMN
+========================================== */
+
+/* Actions header */
+
+.obx-table th:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 6;
+  width: 150px;
+  min-width: 150px;
+  text-align: center;
+  background: var(--obx-card-soft);
+  border-left: 1px solid var(--obx-border);
+  box-shadow: -5px 0 10px rgba(0, 0, 0, 0.045);
+}
+
+/* Actions cells */
+
+.obx-table td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  width: 150px;
+  min-width: 150px;
+  text-align: center;
+  background: var(--obx-card);
+  border-left: 1px solid var(--obx-border);
+  box-shadow: -5px 0 10px rgba(0, 0, 0, 0.045);
+}
+
+/* Keep fixed cell consistent with row hover */
+
+.obx-table tbody tr:hover td:last-child {
+  background: var(--obx-card-soft);
+}
+
+/* Action buttons */
+
+.obx-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+/* ==========================================
+   TABLE CONTENT
+========================================== */
 
 .obx-primary-cell {
   color: var(--obx-accent);
@@ -559,7 +625,7 @@
 }
 
 /* ==========================================
-   UPDATE BUTTON
+   UPDATE / DELETE BUTTONS
 ========================================== */
 
 .obx-update-button {
@@ -591,23 +657,16 @@
   background: var(--obx-accent-soft);
 }
 
-.obx-action-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .obx-update-button--danger {
-  color: var(--obx-danger, #c13c45);
-  border-color: color-mix(in srgb, var(--obx-danger, #c13c45) 28%, transparent);
-  background: var(--obx-danger-bg, #fff0f0);
+  color: var(--obx-danger);
+  border-color: color-mix(in srgb, var(--obx-danger) 28%, transparent);
+  background: var(--obx-danger-bg);
 }
 
 .obx-update-button--danger:hover {
-  color: var(--obx-danger, #c13c45);
-  border-color: var(--obx-danger, #c13c45);
-  background: var(--obx-danger-bg, #fff0f0);
+  color: var(--obx-danger);
+  border-color: var(--obx-danger);
+  background: var(--obx-danger-bg);
 }
 
 .obx-update-button:disabled {

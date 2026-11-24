@@ -84,7 +84,7 @@ export default function YourRequirementsScreen() {
     let active = true;
     setLoading(true);
     setError(null);
-    fetchAllPages(`${ENDPOINTS.REQUIREMENTS}?sort=createdAt:desc`, { pageSize: 100 })
+    fetchAllPages(`${ENDPOINTS.REQUIREMENTS}?sort=createdAt:desc`, { pageSize: 10 })
       .then((list) => {
         // Sales users only see their own requirements; sales lead / admins see everything.
         const filtered = user?.userType === 'sales'

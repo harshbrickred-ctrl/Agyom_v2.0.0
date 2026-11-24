@@ -421,7 +421,7 @@
 ========================================= */
 
 .ofx-results-card {
-  width: 1170px;
+  width: 1190px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -673,7 +673,7 @@
 }
 
 .ofx-action-row {
-  display: inline-flex;
+  /* display: inline-flex; */
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;

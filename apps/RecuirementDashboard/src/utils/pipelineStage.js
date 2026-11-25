@@ -51,7 +51,7 @@ export function derivePipelineStage(candidate) {
   }
 
   const round = (candidate?.interviewRound || '').toUpperCase();
-  if (/^L[1-4]$/.test(round) || round === 'COMPLETED') {
+  if (stage === 'INTERVIEW' || /^L[1-4]$/.test(round) || round === 'COMPLETED') {
     return { pipelineStage: 'INTERVIEW', pipelineLabel: LABELS.INTERVIEW };
   }
   if (stage === 'CLIENT_SHORTLIST') {

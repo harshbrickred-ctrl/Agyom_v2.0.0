@@ -40,6 +40,7 @@ const LOOKUPS: Record<string, { code: string; label: string }[]> = {
     { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to Internal Sales Team' },
     { code: 'SUBMITTED_TO_CLIENT', label: 'Submitted to Client' },
     { code: 'CLIENT_SHORTLIST', label: 'Client Shortlisted' },
+    { code: 'INTERVIEW', label: 'Interview Stage' },
     { code: 'REJECT', label: 'Reject' },
     { code: 'HOLD', label: 'Hold' },
     { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to Higher CTC' },
@@ -195,7 +196,7 @@ async function main() {
     data: { stageCode: 'REJECT' },
   });
   await prisma.candidate.updateMany({
-    where: { stageCode: { in: ['SOURCED', 'INTERVIEW', 'SELECTED'] } },
+    where: { stageCode: { in: ['SOURCED', 'SELECTED'] } },
     data: { stageCode: 'SUBMITTED_TO_SPOC' },
   });
 

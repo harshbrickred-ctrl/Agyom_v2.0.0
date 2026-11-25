@@ -25,6 +25,7 @@ const FALLBACK_STAGES = [
   { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to Internal Sales Team' },
   { code: 'SUBMITTED_TO_CLIENT', label: 'Submitted to Client' },
   { code: 'CLIENT_SHORTLIST', label: 'Client Shortlisted' },
+  { code: 'INTERVIEW', label: 'Interview Stage' },
   { code: 'REJECT', label: 'Reject' },
   { code: 'HOLD', label: 'Hold' },
   { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to Higher CTC' },
@@ -59,7 +60,7 @@ const CANDIDATE_FIELDS = [
   { key: 'loiStatus', label: 'LOI', type: 'select', required: true, optionsKey: 'loiStatuses', onlyWhenSelected: true },
   { key: 'profileSubmittedDate', label: 'Profile submitted', type: 'date', required: true },
   { key: 'clientShortlistDate', label: 'Client shortlist', type: 'date', required: false, requiredWhenShortlisted: true },
-  { key: 'interviewRound', label: 'Interview round', type: 'select', required: true, optionsKey: 'interviewRounds' },
+  { key: 'interviewRound', label: 'Interview round', type: 'select', required: false, requiredWhenInterview: true, onlyWhenInterview: true, optionsKey: 'interviewRounds' },
   { key: 'remarks', label: 'Remarks', type: 'textarea', required: false, placeholder: 'Skills, notice period, or interview notes' },
 ];
 
@@ -80,7 +81,7 @@ const FORM_SECTIONS = [
   {
     id: 'stage',
     title: 'Pipeline',
-    hint: 'Start at Submitted to Internal Sales Team unless this profile is already further along.',
+    hint: 'Interview Round appears only when Pipeline Stage is Interview Stage.',
     keys: ['candidateStage', 'feedbackStatus', 'loiStatus', 'interviewRound'],
   },
   {
@@ -218,7 +219,7 @@ export default function AssignTaskScreen() {
       action === 'shortlist'
         ? { stageCode: 'CLIENT_SHORTLIST', clientShortlistDate: toDateInput(candidate.clientShortlistDate) || today }
         : action === 'interview'
-          ? { interviewRound: candidate.interviewRound || 'L1' }
+          ? { stageCode: 'INTERVIEW', interviewRound: candidate.interviewRound || 'L1' }
           : action === 'hold'
             ? { stageCode: 'HOLD' }
             : action === 'reject'
@@ -771,6 +772,9 @@ const activeTasks = useMemo(
         if (selected && !f.loiStatus) next.loiStatus = 'NOT_RECEIVED';
         if (!selected) next.loiStatus = 'NOT_RECEIVED';
       }
+      if (key === 'candidateStage' && String(value).toUpperCase() !== 'INTERVIEW') {
+        next.interviewRound = '';
+      }
       return next;
     });
     setAutoFilled((prev) => (prev[key] ? { ...prev, [key]: false } : prev));
@@ -778,10 +782,13 @@ const activeTasks = useMemo(
 
   const isSelectedStatus =
     String(form.feedbackStatus || '').trim().toLowerCase() === 'selected';
+  const isInterviewStage =
+    String(form.candidateStage || '').toUpperCase() === 'INTERVIEW';
 
   const formFields = CANDIDATE_FIELDS.filter((f) => {
     if (!editing && f.hideOnAdd) return false;
     if (f.onlyWhenSelected && !isSelectedStatus) return false;
+    if (f.onlyWhenInterview && !isInterviewStage) return false;
     return true;
   });
 
@@ -814,10 +821,13 @@ const activeTasks = useMemo(
     const isTextarea = f.type === 'textarea';
     const inputType = f.type === 'textarea' || f.type === 'select' ? 'text' : f.type;
     const filled = Boolean(autoFilled[f.key]);
-    const stageIsShortlisted =
-      String(form.candidateStage || '').toUpperCase() === 'CLIENT_SHORTLIST';
+    const stageCode = String(form.candidateStage || '').toUpperCase();
+    const stageIsShortlisted = stageCode === 'CLIENT_SHORTLIST';
+    const stageIsInterview = stageCode === 'INTERVIEW';
     const showRequired =
-      f.required || (f.requiredWhenShortlisted && stageIsShortlisted);
+      f.required
+      || (f.requiredWhenShortlisted && stageIsShortlisted)
+      || (f.requiredWhenInterview && stageIsInterview);
     return (
       <label key={f.key} className={`cand-field${isTextarea ? ' full' : ''}${filled ? ' cand-field--autofill' : ''}`}>
         <span>
@@ -873,6 +883,7 @@ const activeTasks = useMemo(
     const fieldRequired = (f) => {
       if (f.required) return true;
       if (f.requiredWhenShortlisted && stage === 'CLIENT_SHORTLIST') return true;
+      if (f.requiredWhenInterview && stage === 'INTERVIEW') return true;
       return false;
     };
     const missing = formFields.filter((f) => fieldRequired(f) && !String(form[f.key]).trim());
@@ -894,6 +905,10 @@ const activeTasks = useMemo(
       setError('Client Shortlist Date is required when Pipeline Stage is Client Shortlisted.');
       return;
     }
+    if (stage === 'INTERVIEW' && !String(form.interviewRound || '').trim()) {
+      setError('Interview Round is required when Pipeline Stage is Interview Stage.');
+      return;
+    }
     // Shared fields for POST /api/v1/candidates and PATCH /api/v1/candidates/{id}.
     // Empty optional dates/strings become null so the API can clear or skip them.
     const sharedPayload = {
@@ -908,7 +923,7 @@ const activeTasks = useMemo(
       ...(status === 'selected' ? { loiStatus: form.loiStatus } : {}),
       profileSubmittedDate: form.profileSubmittedDate || null,
       clientShortlistDate: form.clientShortlistDate || null,
-      interviewRound: form.interviewRound,
+      interviewRound: stage === 'INTERVIEW' ? (form.interviewRound || null) : null,
       remarks: form.remarks || null,
     };
     try {

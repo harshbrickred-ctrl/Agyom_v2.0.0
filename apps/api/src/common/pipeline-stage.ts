@@ -71,7 +71,11 @@ export function derivePipelineStage(input: {
   }
 
   const round = (input.interviewRound ?? '').toUpperCase();
-  if (/^L[1-4]$/.test(round) || round === 'COMPLETED') {
+  if (
+    stage === 'INTERVIEW' ||
+    /^L[1-4]$/.test(round) ||
+    round === 'COMPLETED'
+  ) {
     return {
       pipelineStage: 'INTERVIEW',
       pipelineLabel: PIPELINE_LABELS.INTERVIEW,

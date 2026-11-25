@@ -212,8 +212,9 @@ describe('Candidates integration (Phase C)', () => {
     expect(sales.status).toBe(403);
   });
 
-  it('IT-CAN-GATES-001: create without interviewRound → 400', async () => {
+  it('IT-CAN-GATES-001: INTERVIEW stage without interviewRound → 400', async () => {
     const res = await addCandidate(personas.TA.token, assignedReq.id, {
+      stageCode: 'INTERVIEW',
       interviewRound: '',
     });
     expect(res.status).toBe(400);

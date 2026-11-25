@@ -48,7 +48,7 @@ export class CreateCandidateDto {
   @ApiProperty({
     example: 'SUBMITTED_TO_SPOC',
     description:
-      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | SUBMITTED_TO_CLIENT | CLIENT_SHORTLIST | REJECT | HOLD | REJECT_HIGHER_CTC',
+      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | SUBMITTED_TO_CLIENT | CLIENT_SHORTLIST | INTERVIEW | REJECT | HOLD | REJECT_HIGHER_CTC',
   })
   @IsString()
   stageCode!: string;
@@ -80,13 +80,16 @@ export class CreateCandidateDto {
   @IsDateString()
   clientShortlistDate?: string | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'L1',
-    description: 'Active INTERVIEW_ROUND lookup: L1 | L2 | L3 | L4 | COMPLETED',
+    nullable: true,
+    description:
+      'Required when stageCode is INTERVIEW. Active INTERVIEW_ROUND lookup: L1 | L2 | L3 | L4 | COMPLETED',
   })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsString()
-  @MinLength(1)
-  interviewRound!: string;
+  interviewRound?: string | null;
 
   @ApiPropertyOptional({
     example: 'NOT_RECEIVED',
@@ -138,7 +141,7 @@ export class UpdateCandidateDto {
   @ApiPropertyOptional({
     example: 'CLIENT_SHORTLIST',
     description:
-      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | SUBMITTED_TO_CLIENT | CLIENT_SHORTLIST | REJECT | HOLD | REJECT_HIGHER_CTC',
+      'Active CANDIDATE_STAGE lookup: SUBMITTED_TO_SPOC | SUBMITTED_TO_CLIENT | CLIENT_SHORTLIST | INTERVIEW | REJECT | HOLD | REJECT_HIGHER_CTC',
   })
   @IsOptional()
   @IsString()
@@ -183,7 +186,8 @@ export class UpdateCandidateDto {
   @ApiPropertyOptional({
     example: 'L2',
     nullable: true,
-    description: 'Active INTERVIEW_ROUND lookup: L1 | L2 | L3 | L4 | COMPLETED',
+    description:
+      'Required when stageCode is INTERVIEW. Active INTERVIEW_ROUND lookup: L1 | L2 | L3 | L4 | COMPLETED',
   })
   @IsOptional()
   @ValidateIf((_, v) => v !== null && v !== undefined)

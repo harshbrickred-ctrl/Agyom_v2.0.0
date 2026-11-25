@@ -268,8 +268,66 @@ export class CandidatesService {
     return code;
   }
 
+  /** Keep Interview Stage active and ordered directly under Client Shortlisted. */
+  private static readonly CANDIDATE_STAGE_ORDER: {
+    code: string;
+    label: string;
+  }[] = [
+    { code: 'SUBMITTED_TO_SPOC', label: 'Submitted to Internal Sales Team' },
+    { code: 'SUBMITTED_TO_CLIENT', label: 'Submitted to Client' },
+    { code: 'CLIENT_SHORTLIST', label: 'Client Shortlisted' },
+    { code: 'INTERVIEW', label: 'Interview Stage' },
+    { code: 'REJECT', label: 'Reject' },
+    { code: 'HOLD', label: 'Hold' },
+    { code: 'REJECT_HIGHER_CTC', label: 'Rejected due to Higher CTC' },
+  ];
+
+  private async ensureInterviewStageLookup(): Promise<void> {
+    const type = await this.prisma.lookupType.findUnique({
+      where: { code: 'CANDIDATE_STAGE' },
+    });
+    if (!type) return;
+    const interview = await this.prisma.lookupValue.findUnique({
+      where: {
+        lookupTypeId_code: { lookupTypeId: type.id, code: 'INTERVIEW' },
+      },
+    });
+    // Already active and ordered under Client Shortlisted.
+    if (interview?.isActive && interview.sortOrder === 4) return;
+
+    for (let i = 0; i < CandidatesService.CANDIDATE_STAGE_ORDER.length; i++) {
+      const v = CandidatesService.CANDIDATE_STAGE_ORDER[i];
+      await this.prisma.lookupValue.upsert({
+        where: {
+          lookupTypeId_code: { lookupTypeId: type.id, code: v.code },
+        },
+        create: {
+          lookupTypeId: type.id,
+          code: v.code,
+          label: v.label,
+          sortOrder: i + 1,
+          isActive: true,
+        },
+        update: {
+          label: v.label,
+          sortOrder: i + 1,
+          isActive: true,
+        },
+      });
+    }
+  }
+
   private async assertStageCode(stageCode: string): Promise<string> {
+    await this.ensureInterviewStageLookup();
     return this.assertLookupCode('CANDIDATE_STAGE', stageCode, 'stageCode');
+  }
+
+  private assertInterviewRoundForStage(
+    stageCode: string,
+    interviewRound: string | null | undefined,
+  ): void {
+    if (stageCode !== 'INTERVIEW') return;
+    this.assertRequiredInterviewRound(interviewRound);
   }
 
   private static readonly INTERVIEW_ROUND_VALUES: {
@@ -367,7 +425,7 @@ export class CandidatesService {
   ): void {
     if (interviewRound === null || String(interviewRound ?? '').trim() === '') {
       throw new BadRequestException(
-        'Interview round is required before saving the candidate.',
+        'Interview Round is required when Pipeline Stage is Interview Stage.',
       );
     }
   }
@@ -763,9 +821,12 @@ export class CandidatesService {
     const flags = await this.duplicateFlags(mobileNormalized, emailNormalized);
     const publicId = await this.ids.next('candidate', 'CAN');
     const statusFields = this.resolveStatusFields(dto, false);
-    this.assertRequiredInterviewRound(dto.interviewRound);
     const stageCode = await this.assertStageCode(dto.stageCode);
-    const interviewRound = await this.assertInterviewRound(dto.interviewRound);
+    this.assertInterviewRoundForStage(stageCode, dto.interviewRound);
+    const interviewRound =
+      stageCode === 'INTERVIEW'
+        ? await this.assertInterviewRound(dto.interviewRound)
+        : null;
     this.assertShortlistDateWhenShortlisted(stageCode, dto.clientShortlistDate);
     const becomingSelected = Boolean(statusFields.selected);
     if (dto.loiStatus !== undefined && !becomingSelected) {
@@ -883,22 +944,25 @@ export class CandidatesService {
       : before.emailNormalized;
 
     const statusFields = this.resolveStatusFields(dto, Boolean(before.offer));
-    if (
-      dto.interviewRound !== undefined &&
-      (dto.interviewRound === null || String(dto.interviewRound).trim() === '')
-    ) {
-      this.assertRequiredInterviewRound(dto.interviewRound);
-    }
     const stageCode =
       dto.stageCode !== undefined
         ? await this.assertStageCode(dto.stageCode)
         : undefined;
-    const interviewRound =
+    const nextStageCode = stageCode ?? before.stageCode;
+
+    let interviewRound =
       dto.interviewRound !== undefined
         ? await this.assertInterviewRound(dto.interviewRound)
         : undefined;
+    if (nextStageCode === 'INTERVIEW') {
+      const effectiveRound =
+        interviewRound !== undefined ? interviewRound : before.interviewRound;
+      this.assertInterviewRoundForStage(nextStageCode, effectiveRound);
+    } else if (stageCode !== undefined && nextStageCode !== 'INTERVIEW') {
+      // Leaving Interview Stage clears the round so it only applies there.
+      interviewRound = null;
+    }
 
-    const nextStageCode = stageCode ?? before.stageCode;
     const nextShortlistDate =
       dto.clientShortlistDate !== undefined
         ? dto.clientShortlistDate

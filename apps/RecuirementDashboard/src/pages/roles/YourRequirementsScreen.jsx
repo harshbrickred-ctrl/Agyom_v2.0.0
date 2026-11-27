@@ -31,6 +31,27 @@ function memberLoadError(err, fallback) {
   return Array.isArray(raw) ? raw.join('; ') : String(raw);
 }
 
+/** Keep already-assigned people selectable/labeled even if they are not in the role member list. */
+function mergeAssignedMembers(options = [], ...assignedGroups) {
+  const byId = new Map();
+  for (const o of options) {
+    if (o?.id) byId.set(o.id, o);
+  }
+  for (const group of assignedGroups) {
+    const list = Array.isArray(group) ? group : group ? [group] : [];
+    for (const person of list) {
+      if (!person?.id || byId.has(person.id)) continue;
+      byId.set(person.id, {
+        id: person.id,
+        fullName: person.fullName || person.name || person.email || null,
+        name: person.name || person.fullName || null,
+        email: person.email || null,
+      });
+    }
+  }
+  return Array.from(byId.values());
+}
+
 // Shows the requirements from the live backend (GET /api/v1/requirements).
 // Sales users see only the requirements they own (salesOwnerId === user.id);
 // admins see all requirements. Client / Priority / Status filters are applied
@@ -180,6 +201,14 @@ export default function YourRequirementsScreen() {
   const jobFamilies = useMemo(() => jobFamilyOptions.map((jf) => ({ id: jf.id, name: jf.name || jf.label || jf.id })), [jobFamilyOptions]);
   const salesOwners = useMemo(() => salesOwnerOptions.map((o) => ({ id: o.id, name: o.fullName || o.name || o.email || o.id })), [salesOwnerOptions]);
   const taOwners = useMemo(() => taOwnerOptions.map((o) => ({ id: o.id, name: o.fullName || o.name || o.email || o.id })), [taOwnerOptions]);
+  const editTaOwnerOptions = useMemo(
+    () => mergeAssignedMembers(taOwnerOptions, editing?.taOwners, editing?.taOwner),
+    [taOwnerOptions, editing],
+  );
+  const editTaLeadOptions = useMemo(
+    () => mergeAssignedMembers(taLeadOptions, editing?.taLeads),
+    [taLeadOptions, editing],
+  );
 
   const PRIORITIES = ['HIGH', 'MEDIUM', 'LOW', 'CRITICAL'];
   const STATUSES = ['ACTIVE', 'ON_HOLD', 'CLOSED', 'CANCELLED'];
@@ -1316,7 +1345,7 @@ export default function YourRequirementsScreen() {
                         {assignMode === 'lead' && (
                           <>
                             <TaOwnersMultiSelect
-                              options={taLeadOptions}
+                              options={editTaLeadOptions}
                               value={form.taLeadIds || []}
                               onChange={(ids) => setField('taLeadIds', ids)}
                               idPrefix="edit-ta-lead"
@@ -1341,7 +1370,7 @@ export default function YourRequirementsScreen() {
 
                         {assignMode === 'owners' && (
                           <TaOwnersMultiSelect
-                            options={taOwnerOptions}
+                            options={editTaOwnerOptions}
                             value={form.taOwnerIds || []}
                             onChange={(ids) => setField('taOwnerIds', ids)}
                             idPrefix="edit-ta-owner"

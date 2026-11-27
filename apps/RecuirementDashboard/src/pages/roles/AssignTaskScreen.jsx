@@ -1182,6 +1182,21 @@ const activeTasks = useMemo(
 
         <div className="ats-position">{task.position}</div>
 
+        <div className="ats-card-details">
+          <span>
+            Location <strong>{task.jobLocation && task.jobLocation !== '—' ? task.jobLocation : '—'}</strong>
+          </span>
+          <span>
+            Experience <strong>{task.experience || '—'}</strong>
+          </span>
+          <span>
+            Min Budget <strong>{task.minBudget != null && task.minBudget !== '' && task.minBudget !== '—' ? task.minBudget : '—'}</strong>
+          </span>
+          <span>
+            Max Budget <strong>{task.maxBudget != null && task.maxBudget !== '' && task.maxBudget !== '—' ? task.maxBudget : '—'}</strong>
+          </span>
+        </div>
+
         <div className="ats-card-meta">
           <span className="ats-req-id">
             {task.publicId || task.id}

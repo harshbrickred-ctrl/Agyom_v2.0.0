@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 /** Compact multi-select dropdown for assigning TAs / TA Leads to a requirement. */
 export default function TaOwnersMultiSelect({
@@ -13,7 +13,48 @@ export default function TaOwnersMultiSelect({
 }) {
   const selected = Array.isArray(value) ? value : [];
   const [open, setOpen] = useState(false);
+  const [panelStyle, setPanelStyle] = useState(null);
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+
+  const updatePanelPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const panelHeight = panelRef.current?.offsetHeight || 220;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < Math.min(panelHeight, 160) && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(220, openUp ? spaceAbove : spaceBelow));
+    const top = openUp
+      ? Math.max(8, rect.top - maxHeight - 4)
+      : rect.bottom + 4;
+
+    setPanelStyle({
+      position: 'fixed',
+      top,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      zIndex: 10050,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPanelStyle(null);
+      return undefined;
+    }
+    updatePanelPosition();
+    const onReposition = () => updatePanelPosition();
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
+    return () => {
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [open, options.length, updatePanelPosition]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -36,14 +77,21 @@ export default function TaOwnersMultiSelect({
   const labelById = useMemo(() => {
     const map = new Map();
     for (const o of options) {
-      map.set(o.id, o.fullName || o.name || o.email || o.id);
+      const label = o.fullName || o.name || o.email;
+      if (label) map.set(o.id, label);
     }
     return map;
   }, [options]);
 
   const summary = useMemo(() => {
     if (!selected.length) return placeholder;
-    const names = selected.map((id) => labelById.get(id) || id);
+    const names = selected.map((id) => {
+      const fromOptions = labelById.get(id);
+      if (fromOptions) return fromOptions;
+      // Never surface raw UUIDs/keys in the trigger summary.
+      if (typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id)) return 'Unknown user';
+      return id || 'Unknown user';
+    });
     if (names.length <= 2) return names.join(', ');
     return `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
   }, [selected, labelById, placeholder]);
@@ -69,6 +117,7 @@ export default function TaOwnersMultiSelect({
     <div className={`ta-multi-dropdown${open ? ' is-open' : ''}`} ref={rootRef}>
       <button
         type="button"
+        ref={triggerRef}
         className="ta-multi-trigger"
         disabled={disabled}
         aria-haspopup="listbox"
@@ -82,10 +131,17 @@ export default function TaOwnersMultiSelect({
       </button>
 
       {open && (
-        <div className="ta-multi-panel" role="listbox" aria-multiselectable="true" aria-label={ariaLabel}>
+        <div
+          ref={panelRef}
+          className="ta-multi-panel ta-multi-panel--fixed"
+          role="listbox"
+          aria-multiselectable="true"
+          aria-label={ariaLabel}
+          style={panelStyle || undefined}
+        >
           {options.map((o) => {
             const id = o.id;
-            const label = o.fullName || o.name || o.email || id;
+            const label = o.fullName || o.name || o.email || (typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id) ? 'Unknown user' : id);
             const checked = selected.includes(id);
             const inputId = `${idPrefix}-${id}`;
             return (

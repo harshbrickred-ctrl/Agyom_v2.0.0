@@ -410,6 +410,22 @@
   white-space: nowrap;
 }
 
+.ats-card-details {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 9px;
+  color: var(--ats-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.ats-card-details strong {
+  color: var(--ats-text);
+  font-weight: 700;
+}
+
 .ats-card-meta {
   display: flex;
   align-items: center;

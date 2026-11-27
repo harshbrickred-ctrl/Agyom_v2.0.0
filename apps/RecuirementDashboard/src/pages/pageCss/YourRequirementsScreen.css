@@ -259,7 +259,7 @@
 }
 
 .reqx-control,
-.reqx-form-field input,
+.reqx-form-field input:not([type="radio"]):not([type="checkbox"]),
 .reqx-form-field select,
 .reqx-form-field textarea {
   display: block;
@@ -278,7 +278,7 @@
 }
 
 .reqx-control:focus,
-.reqx-form-field input:focus,
+.reqx-form-field input:not([type="radio"]):not([type="checkbox"]):focus,
 .reqx-form-field select:focus,
 .reqx-form-field textarea:focus {
   border-color: var(--reqx-primary);
@@ -1120,7 +1120,7 @@
   line-height: 1.5;
 }
 
-.reqx-form-field input:disabled {
+.reqx-form-field input:not([type="radio"]):not([type="checkbox"]):disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -1148,11 +1148,20 @@
 }
 
 .reqx-assign-option input {
+  display: inline-block;
   width: 13px;
   height: 13px;
-  min-height: auto;
+  min-width: 13px;
+  max-width: 13px;
+  min-height: 13px;
   margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   accent-color: var(--reqx-primary);
+  flex: 0 0 auto;
 }
 
 .reqx-assign-option.is-active {

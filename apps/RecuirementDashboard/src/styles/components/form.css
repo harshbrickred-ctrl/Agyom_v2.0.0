@@ -406,6 +406,14 @@
   box-shadow: var(--shadow-md);
 }
 
+.ta-multi-panel--fixed {
+  position: fixed;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: 10050;
+}
+
 .ta-multi-option {
   display: flex;
   align-items: center;
